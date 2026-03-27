@@ -6,9 +6,10 @@ const config: Config = {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  darkMode: 'class', // <--- ADD THIS EXACT LINE
   theme: {
     extend: {},
   },
-  plugins: [],
+  plugins:[],
 };
 export default config;
