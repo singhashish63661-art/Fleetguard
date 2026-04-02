@@ -1023,7 +1023,7 @@ export default function AdminDashboard() {
                           <td className="px-6 py-4"><span className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full border ${getStatusColor(getDisplayStatus(log))}`}>{getDisplayStatus(log)}</span></td>
                           <td className="px-6 py-4">
                             <div className="text-xs font-semibold text-slate-700 flex items-center"><UserCircle size={14} className="mr-1.5 text-slate-400"/>{log.updated_by || log.created_by || 'System Generated'}</div>
-                            <div className="text-[10px] text-slate-400 font-medium mt-1">{new Date(log.created_at).toLocaleDateString()}</div>
+                            <div className="text-[10px] text-slate-400 font-medium mt-1">{log.created_at ? new Date(log.created_at).toLocaleDateString() : '—'}</div>
                           </td>
                           <td className="px-6 py-4 text-right flex justify-end gap-2">
                             <button onClick={() => handleEditRecord(log)} className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 hover:bg-slate-200 px-3 py-2 rounded-lg text-xs font-bold transition-all border border-slate-200"><Edit2 size={14} /> Edit</button>
@@ -1168,7 +1168,7 @@ export default function AdminDashboard() {
                           <td className="px-6 py-4 font-mono font-bold text-indigo-600 bg-indigo-50/50 w-32 rounded-r-md my-2">{c.client_id_number}</td>
                           <td className="px-6 py-4 font-black text-slate-800">{c.company_name}</td>
                           <td className="px-6 py-4 text-slate-600 font-medium flex items-center mt-1.5"><Mail size={14} className="mr-2 text-slate-400"/> {c.contact_email || 'No email provided'}</td>
-                          <td className="px-6 py-4 text-xs font-semibold text-slate-500">{new Date(c.created_at).toLocaleDateString()}</td>
+                          <td className="px-6 py-4 text-xs font-semibold text-slate-500">{c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
                         </tr>
                       ))}
                       {clientList.length === 0 && (<tr><td colSpan={4} className="px-6 py-12 text-center text-slate-500 font-medium">Directory is empty. Add a client above.</td></tr>)}
@@ -1542,7 +1542,7 @@ export default function AdminDashboard() {
                             <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold ${getTamperingStatusColor(incident.status)}`}>{incident.status}</span>
                           </div>
                           <p className="text-sm font-medium text-slate-600">{incident.driver_name} • {incident.technician_name}</p>
-                          <p className="text-xs font-medium text-slate-500">Created on {new Date(incident.created_at).toLocaleString()}</p>
+                          <p className="text-xs font-medium text-slate-500">Created on {incident.created_at ? new Date(incident.created_at).toLocaleString() : 'Unknown date'}</p>
                           {incident.rejection_reason ? <p className="max-w-2xl rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{incident.rejection_reason}</p> : null}
                           {incident.status === 'Rejected' && (
                             <button onClick={() => startTamperingEdit(incident)} className="inline-flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors">
