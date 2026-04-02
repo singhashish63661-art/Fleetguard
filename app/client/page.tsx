@@ -377,12 +377,12 @@ export default function ClientDashboard() {
   // Ensure zero-value rows still show a minimal bar height
   const normalizedTamperingSummaryData = tamperingSummaryData.map(row => ({
     ...row,
-    approved: row.approved || 0.0001,
-    pending: row.pending || 0.0001,
-    rejected: row.rejected || 0.0001,
-    amountApproved: row.amountApproved || 0.0001,
-    amountPending: row.amountPending || 0.0001,
-    amountRejected: row.amountRejected || 0.0001,
+    approved: row.approved || 0.1,
+    pending: row.pending || 0.1,
+    rejected: row.rejected || 0.1,
+    amountApproved: row.amountApproved || 1,
+    amountPending: row.amountPending || 1,
+    amountRejected: row.amountRejected || 1,
   }))
   const tamperingTotals = tamperingSummaryData.reduce((acc, row) => {
     acc.approved += row.approved; acc.pending += row.pending; acc.rejected += row.rejected;
@@ -782,7 +782,11 @@ export default function ClientDashboard() {
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} dy={10} />
                           <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} />
-                          <RechartsTooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none', backgroundColor: '#fff', color: '#000', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}/>
+                          <RechartsTooltip
+                            cursor={{fill: '#f8fafc'}}
+                            formatter={(value) => Math.max(0, Math.round(value as number))}
+                            contentStyle={{borderRadius: '12px', border: 'none', backgroundColor: '#fff', color: '#000', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}
+                          />
                           <Bar dataKey="approved" stackId="status" fill="#10b981" radius={[4, 4, 0, 0]} barSize={28} />
                           <Bar dataKey="pending" stackId="status" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                           <Bar dataKey="rejected" stackId="status" fill="#ef4444" radius={[4, 4, 0, 0]} />
@@ -813,7 +817,11 @@ export default function ClientDashboard() {
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} dy={10} />
                           <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} />
-                          <RechartsTooltip formatter={(value) => `₹${Number(value).toLocaleString()}`} cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none', backgroundColor: '#fff', color: '#000', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}/>
+                          <RechartsTooltip
+                            formatter={(value) => `₹${Math.max(0, Math.round(value as number)).toLocaleString()}`}
+                            cursor={{fill: '#f8fafc'}}
+                            contentStyle={{borderRadius: '12px', border: 'none', backgroundColor: '#fff', color: '#000', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}
+                          />
                           <Bar dataKey="amountApproved" stackId="amt" fill="#10b981" radius={[4, 4, 0, 0]} barSize={28} />
                           <Bar dataKey="amountPending" stackId="amt" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                           <Bar dataKey="amountRejected" stackId="amt" fill="#ef4444" radius={[4, 4, 0, 0]} />
