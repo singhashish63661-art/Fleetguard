@@ -284,10 +284,13 @@ export default function AdminDashboard() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = (evt) => {
-      const bstr = evt.target?.result; const wb = XLSX.read(bstr, { type: 'binary' });
-      const wsname = wb.SheetNames[0]; const ws = wb.Sheets[wsname];
-      const data = XLSX.utils.sheet_to_json(ws); setImportData(data);
+    reader.onload = (evt: ProgressEvent<FileReader>) => {
+      const bstr = evt.target?.result;
+      const wb = XLSX.read(bstr as string, { type: 'binary' });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+      const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
+      setImportData(data);
     };
     reader.readAsBinaryString(file);
   }
