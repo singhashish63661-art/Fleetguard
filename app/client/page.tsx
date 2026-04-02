@@ -29,6 +29,8 @@ export default function ClientDashboard() {
   const [data, setData] = useState<any[]>([])
   const [tamperingLogs, setTamperingLogs] = useState<any[]>([]) // NEW: Tampering Logs
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [isLoadingData, setIsLoadingData] = useState(true)
+  const [isLoadingTampering, setIsLoadingTampering] = useState(true)
   const triggerToast = (message: string, tone: 'info' | 'success' | 'warning' = 'info') => {
     setToast({ message, tone })
     setNotifications(prev => [{ id: `${Date.now()}`, message, tone, ts: Date.now() }, ...prev].slice(0, 6))
@@ -92,21 +94,31 @@ export default function ClientDashboard() {
     } catch (error) { console.log("Auth bypass:", error) }
   }
 
-  async function fetchData() {
-    const { data: accidents } = await supabase.from('accidents').select('*').order('created_at', { ascending: false })
+  async function fetchData(companyFilter?: string | null) {
+    setIsLoadingData(true)
+    const query = supabase.from('accidents').select('*').order('created_at', { ascending: false })
+    const { data: accidents } = companyFilter ? await query.eq('company_name', companyFilter) : await query
     if (accidents) setData(accidents)
+    setIsLoadingData(false)
   }
 
-  async function fetchTamperingLogs() {
-    const { data } = await supabase.from('tampering_incidents').select('*').order('created_at', { ascending: false })
+  async function fetchTamperingLogs(companyFilter?: string | null) {
+    setIsLoadingTampering(true)
+    const query = supabase.from('tampering_incidents').select('*').order('created_at', { ascending: false })
+    const { data } = companyFilter ? await query.eq('client_name', companyFilter) : await query
     if (data) setTamperingLogs(data)
+    setIsLoadingTampering(false)
   }
 
   useEffect(() => {
     fetchCurrentUser()
-    fetchData()
-    fetchTamperingLogs()
   },[])
+
+  useEffect(() => {
+    const company = currentUser?.company_name || null
+    fetchData(company)
+    fetchTamperingLogs(company)
+  }, [currentUser])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -140,25 +152,33 @@ export default function ClientDashboard() {
     const incidentChannel = supabase
       .channel('realtime-incidents')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'accidents' }, (payload) => {
-        triggerToast(`New incident logged: ${payload.new.vehicle_number}`, 'info')
-        fetchData()
+        if (!currentUser?.company_name || payload.new.company_name === currentUser?.company_name) {
+          triggerToast(`New incident logged: ${payload.new.vehicle_number}`, 'info')
+          fetchData(currentUser?.company_name || null)
+        }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'accidents' }, (payload) => {
-        triggerToast(`Incident updated: ${payload.new.vehicle_number}`, 'success')
-        fetchData()
+        if (!currentUser?.company_name || payload.new.company_name === currentUser?.company_name) {
+          triggerToast(`Incident updated: ${payload.new.vehicle_number}`, 'success')
+          fetchData(currentUser?.company_name || null)
+        }
       })
       .subscribe()
 
     const tamperingChannel = supabase
       .channel('realtime-tampering')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tampering_incidents' }, (payload) => {
-        triggerToast(`New tampering request for ${payload.new.vehicle_number}`, 'info')
-        fetchTamperingLogs()
+        if (!currentUser?.company_name || payload.new.client_name === currentUser?.company_name) {
+          triggerToast(`New tampering request for ${payload.new.vehicle_number}`, 'info')
+          fetchTamperingLogs(currentUser?.company_name || null)
+        }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tampering_incidents' }, (payload) => {
-        const tone = payload.new.status === 'Rejected' ? 'warning' : 'success'
-        triggerToast(`Tampering ${payload.new.status}: ${payload.new.vehicle_number}`, tone)
-        fetchTamperingLogs()
+        if (!currentUser?.company_name || payload.new.client_name === currentUser?.company_name) {
+          const tone = payload.new.status === 'Rejected' ? 'warning' : 'success'
+          triggerToast(`Tampering ${payload.new.status}: ${payload.new.vehicle_number}`, tone)
+          fetchTamperingLogs(currentUser?.company_name || null)
+        }
       })
       .subscribe()
 
@@ -771,7 +791,12 @@ export default function ClientDashboard() {
                     )}
                   </div>
                 ) : (
-                  <div className="h-[600px] w-full bg-slate-100 relative"><AccidentMap data={filteredData} onMarkerClick={(acc) => setSelectedAccident(acc)} /></div>
+                  <div className="h-[600px] w-full bg-slate-100 relative">
+                    <div className="absolute top-3 right-3 z-10 flex gap-2">
+                      <button onClick={() => setViewMode('map')} className="px-3 py-1.5 text-xs font-bold bg-white rounded-lg border border-slate-200 shadow-sm">Reset</button>
+                    </div>
+                    <AccidentMap data={filteredData} onMarkerClick={(acc) => setSelectedAccident(acc)} autoFit />
+                  </div>
                 )}
               </div>
             </div>

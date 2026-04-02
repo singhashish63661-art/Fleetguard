@@ -1,7 +1,8 @@
 'use client'
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
+import { useEffect } from 'react'
 import 'leaflet/dist/leaflet.css'
 
 // We use direct URLs for the icons to bypass Next.js image compilation bugs
@@ -13,12 +14,24 @@ const customIcon = new L.Icon({
   popupAnchor: [1, -34],
 });
 
-export default function Map({ data, onMarkerClick }: { data: any[], onMarkerClick: (accident: any) => void }) {
+function FitBounds({ points }: { points: [number, number][] }) {
+  const map = useMap()
+  useEffect(() => {
+    if (points.length === 0) return
+    const bounds = L.latLngBounds(points)
+    map.fitBounds(bounds, { padding: [40, 40] })
+  }, [points, map])
+  return null
+}
+
+export default function Map({ data, onMarkerClick, autoFit = false }: { data: any[], onMarkerClick: (accident: any) => void, autoFit?: boolean }) {
   // Default map center (India), but if there's data, center on the latest accident
   const mapCenter = data.length > 0 && data[0].lat ? [data[0].lat, data[0].lng] as [number, number] : [20.5937, 78.9629] as [number, number];
+  const points = data.filter(acc => acc.lat && acc.lng).map(acc => [acc.lat, acc.lng]) as [number, number][];
 
   return (
     <MapContainer center={mapCenter} zoom={5} style={{ height: '100%', width: '100%', zIndex: 0 }}>
+      {autoFit && points.length > 0 ? <FitBounds points={points}/> : null}
       {/* Premium minimal map tiles */}
       <TileLayer 
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
