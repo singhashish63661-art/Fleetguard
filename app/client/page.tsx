@@ -374,6 +374,16 @@ export default function ClientDashboard() {
   });
 
   const tamperingSummaryData = Object.values(tamperingSummaryMap).sort((a, b) => (b.approved + b.pending + b.rejected) - (a.approved + a.pending + a.rejected));
+  // Ensure zero-value rows still show a minimal bar height
+  const normalizedTamperingSummaryData = tamperingSummaryData.map(row => ({
+    ...row,
+    approved: row.approved || 0.0001,
+    pending: row.pending || 0.0001,
+    rejected: row.rejected || 0.0001,
+    amountApproved: row.amountApproved || 0.0001,
+    amountPending: row.amountPending || 0.0001,
+    amountRejected: row.amountRejected || 0.0001,
+  }))
   const tamperingTotals = tamperingSummaryData.reduce((acc, row) => {
     acc.approved += row.approved; acc.pending += row.pending; acc.rejected += row.rejected;
     acc.amountApproved += row.amountApproved; acc.amountPending += row.amountPending; acc.amountRejected += row.amountRejected;
@@ -766,9 +776,9 @@ export default function ClientDashboard() {
                     </div>
                   </div>
                   <div className="flex-1 p-6">
-                    {tamperingSummaryData.length > 0 ? (
+                    {normalizedTamperingSummaryData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={tamperingSummaryData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                        <BarChart data={normalizedTamperingSummaryData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} dy={10} />
                           <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} />
@@ -797,9 +807,9 @@ export default function ClientDashboard() {
                     </div>
                   </div>
                   <div className="flex-1 p-6">
-                    {tamperingSummaryData.length > 0 ? (
+                    {normalizedTamperingSummaryData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={tamperingSummaryData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                        <BarChart data={normalizedTamperingSummaryData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} dy={10} />
                           <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} />
