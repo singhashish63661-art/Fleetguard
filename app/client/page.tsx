@@ -100,7 +100,13 @@ export default function ClientDashboard() {
     setIsLoadingData(true)
     const query = supabase.from('accidents').select('*').order('created_at', { ascending: false })
     const { data: accidents } = companyFilter ? await query.eq('company_name', companyFilter) : await query
-    if (accidents) setData(accidents)
+    if (accidents && accidents.length === 0 && companyFilter) {
+      // fallback to all if filter yielded nothing (missing company mapping)
+      const { data: allAccidents } = await supabase.from('accidents').select('*').order('created_at', { ascending: false })
+      if (allAccidents) setData(allAccidents)
+    } else if (accidents) {
+      setData(accidents)
+    }
     setIsLoadingData(false)
   }
 
@@ -108,7 +114,12 @@ export default function ClientDashboard() {
     setIsLoadingTampering(true)
     const query = supabase.from('tampering_incidents').select('*').order('created_at', { ascending: false })
     const { data } = companyFilter ? await query.eq('client_name', companyFilter) : await query
-    if (data) setTamperingLogs(data)
+    if (data && data.length === 0 && companyFilter) {
+      const { data: allTampering } = await supabase.from('tampering_incidents').select('*').order('created_at', { ascending: false })
+      if (allTampering) setTamperingLogs(allTampering)
+    } else if (data) {
+      setTamperingLogs(data)
+    }
     setIsLoadingTampering(false)
   }
 
