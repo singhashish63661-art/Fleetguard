@@ -347,13 +347,20 @@ export default function ClientDashboard() {
     amountRejected: number
   }> = {};
 
+  const parseCharge = (val: any) => {
+    if (val === null || val === undefined) return 0
+    const cleaned = String(val).replace(/[^0-9.-]/g, '')
+    const num = Number(cleaned)
+    return Number.isFinite(num) ? num : 0
+  }
+
   tamperingLogs.forEach(log => {
     const client = log.client_name || 'Unknown Client';
     if (!tamperingSummaryMap[client]) {
       tamperingSummaryMap[client] = { name: client, approved: 0, pending: 0, rejected: 0, amountApproved: 0, amountPending: 0, amountRejected: 0 };
     }
-    const status = (log.status || 'Pending').toLowerCase();
-    const charge = Number(log.tampering_repair_charge || log.repair_charge || 0);
+    const status = (log.status || 'Pending').toString().toLowerCase().trim();
+    const charge = parseCharge(log.tampering_repair_charge || log.repair_charge || log.amount || 0);
     if (status === 'approved') {
       tamperingSummaryMap[client].approved += 1;
       tamperingSummaryMap[client].amountApproved += charge;
