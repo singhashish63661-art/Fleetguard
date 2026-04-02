@@ -852,7 +852,7 @@ export default function ClientDashboard() {
                         <tr key={log.id} className="hover:bg-slate-50 transition-colors">
                           <td className="px-6 py-4">
                             <div className="text-sm font-black text-slate-800">{log.client_name}</div>
-                            <div className="text-xs font-bold text-slate-500 mt-1">{new Date(log.created_at).toLocaleDateString()}</div>
+                            <div className="text-xs font-bold text-slate-500 mt-1">{log.created_at ? new Date(log.created_at).toLocaleDateString() : '—'}</div>
                             <span className="inline-flex items-center mt-2 px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">{log.vehicle_number}</span>
                           </td>
                           <td className="px-6 py-4">
@@ -947,7 +947,7 @@ export default function ClientDashboard() {
               <div className="lg:col-span-2 print-col-span-2 pb-4 border-b border-slate-200 mb-4 flex justify-between page-break-avoid print-block">
                 <div>
                   <h1 className="text-2xl font-black text-slate-900">{selectedTampering.client_name}</h1>
-                  <p className="text-slate-500 font-medium mt-1 flex items-center"><CalendarDays size={14} className="mr-1"/> Logged on {new Date(selectedTampering.created_at).toLocaleDateString()}</p>
+                  <p className="text-slate-500 font-medium mt-1 flex items-center"><CalendarDays size={14} className="mr-1"/> Logged on {selectedTampering.created_at ? new Date(selectedTampering.created_at).toLocaleDateString() : 'Unknown date'}</p>
                 </div>
                 <div className="text-right">
                   <span className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full border ${getTamperingStatusColor(selectedTampering.status)}`}>{selectedTampering.status}</span>
