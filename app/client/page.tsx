@@ -1,6 +1,6 @@
 'use client'
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts'
@@ -31,6 +31,8 @@ export default function ClientDashboard() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isLoadingTampering, setIsLoadingTampering] = useState(true)
+  const incidentCountRef = useRef(0)
+  const tamperingCountRef = useRef(0)
   const triggerToast = (message: string, tone: 'info' | 'success' | 'warning' = 'info') => {
     setToast({ message, tone })
     setNotifications(prev => [{ id: `${Date.now()}`, message, tone, ts: Date.now() }, ...prev].slice(0, 6))
@@ -148,7 +150,41 @@ export default function ClientDashboard() {
     }
   }, [clientSettings])
 
+  // --- PUSH NOTIFICATIONS FOR NEW DATA (CLIENT PANEL) ---
+  const appendNotification = (message: string, tone: 'info' | 'success' | 'warning') => {
+    setNotifications(prev => [{ id: `${Date.now()}`, message, tone, ts: Date.now() }, ...prev].slice(0, 10))
+  }
+
   useEffect(() => {
+    if (incidentCountRef.current === 0) {
+      incidentCountRef.current = data.length
+      return
+    }
+    if (data.length > incidentCountRef.current) {
+      const diff = data.length - incidentCountRef.current
+      triggerToast(`New incident records: +${diff}`, 'info')
+      setUnreadCount(prev => prev + diff)
+      appendNotification(`+${diff} new incident(s) added`, 'info')
+    }
+    incidentCountRef.current = data.length
+  }, [data])
+
+  useEffect(() => {
+    if (tamperingCountRef.current === 0) {
+      tamperingCountRef.current = tamperingLogs.length
+      return
+    }
+    if (tamperingLogs.length > tamperingCountRef.current) {
+      const diff = tamperingLogs.length - tamperingCountRef.current
+      triggerToast(`New tampering requests: +${diff}`, 'info')
+      setUnreadCount(prev => prev + diff)
+      appendNotification(`+${diff} new tampering request(s)`, 'info')
+    }
+    tamperingCountRef.current = tamperingLogs.length
+  }, [tamperingLogs])
+
+  useEffect(() => {
+    if (currentUser === null) return
     const incidentChannel = supabase
       .channel('realtime-incidents')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'accidents' }, (payload) => {
@@ -186,7 +222,7 @@ export default function ClientDashboard() {
       supabase.removeChannel(incidentChannel)
       supabase.removeChannel(tamperingChannel)
     }
-  }, [])
+  }, [currentUser])
 
   const getTamperingDriverContact = (log: any) => log.driver_contact_number || log.driver_contact || 'N/A'
   const getTamperingTechnicianContact = (log: any) => log.technician_contact_number || log.technician_contact || 'N/A'
