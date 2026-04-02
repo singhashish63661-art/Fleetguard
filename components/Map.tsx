@@ -1,4 +1,5 @@
 'use client'
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -29,7 +30,7 @@ export default function Map({ data, onMarkerClick }: { data: any[], onMarkerClic
         return (
           <Marker key={acc.id} position={[acc.lat, acc.lng]} icon={customIcon}>
             <Popup className="rounded-xl">
-              <div className="p-1 min-w-[200px]">
+              <div className="p-1 min-w- [200px]">
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200 mb-2">{acc.vehicle_number}</span>
                 <h3 className="font-black text-slate-800 text-sm mb-1">{acc.company_name || 'Unknown Company'}</h3>
                 <p className="text-xs text-slate-500 font-medium mb-3 border-b pb-2">{acc.place}</p>

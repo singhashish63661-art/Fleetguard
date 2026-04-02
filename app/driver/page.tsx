@@ -1,7 +1,8 @@
 'use client'
-import { useState, useEffect } from 'react'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Camera, MapPin, Loader2, Send, ShieldAlert, CheckCircle, Navigation, AlertTriangle, LogOut } from 'lucide-react'
+import { Camera, MapPin, Loader2, Send, CheckCircle, Navigation, AlertTriangle, LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 export default function DriverMobilePortal() {
@@ -35,7 +36,7 @@ export default function DriverMobilePortal() {
           })
           setIsFetchingGPS(false)
         },
-        (error) => {
+        (_error) => {
           alert("Please enable Location Services on your phone.")
           setIsFetchingGPS(false)
         },

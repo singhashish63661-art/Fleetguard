@@ -1,7 +1,8 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { createSystemUser, sendIncidentEmail } from '@/app/actions'
+import { createSystemUser, sendIncidentEmail, sendTamperingIncidentEmail } from '@/app/actions'
 import * as XLSX from 'xlsx'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { 
@@ -10,29 +11,79 @@ import {
   Clock, MapPin, User, Car, Film, AlertCircle, Phone, FileSignature, 
   Activity, CheckCircle2, PlaySquare, X, Users, Mail, Key, Building2, 
   UserCircle, Edit2, CalendarDays, History, ShieldAlert, BookOpen, Hash, 
-  Briefcase, GripVertical, AlertTriangle, TrendingDown, FileSpreadsheet, Download, Printer, Link as LinkIcon
+  Briefcase, GripVertical, AlertTriangle, TrendingDown, FileSpreadsheet, Download, Printer
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+
 
 export default function AdminDashboard() {
   const router = useRouter()
   
-  const[activeTab, setActiveTab] = useState<'overview' | 'pipeline' | 'risk' | 'log' | 'clients' | 'audit' | 'directory'>('overview')
+  const[activeTab, setActiveTab] = useState<'overview' | 'pipeline' | 'risk' | 'log' | 'tampering' | 'clients' | 'audit' | 'directory'>('overview')
   
-  const[allLogs, setAllLogs] = useState<any[]>([])
-  const [profiles, setProfiles] = useState<any[]>([]) 
-  const [auditLogs, setAuditLogs] = useState<any[]>([])
-  const[clientList, setClientList] = useState<any[]>([])
-  const [currentUser, setCurrentUser] = useState<any>(null) 
+  type Accident = {
+    id: string
+    vehicle_number: string
+    accident_date: string
+    accident_time: string
+    place?: string
+    driver_name: string
+    driver_contact?: string
+    company_name: string
+    client_id_number?: string
+    video_provided?: boolean
+    status?: string
+    lat?: number | null
+    lng?: number | null
+    remarks?: string
+    vehicle_image_url?: string | null
+    driver_image_url?: string | null
+    front_video_url?: string | null
+    rear_video_url?: string | null
+    investigation_doc_url?: string | null
+    created_at?: string
+    updated_by?: string
+    created_by?: string
+  }
+  type TamperingIncident = {
+    id: string
+    client_name: string
+    vehicle_number: string
+    driver_name: string
+    driver_contact_number?: string
+    tampering_details?: string
+    address?: string
+    technician_name: string
+    technician_contact_number?: string
+    tampering_repair_charge?: number | null
+    tampering_image_url?: string | null
+    repair_device_image_url?: string | null
+    status: string
+    rejection_reason?: string | null
+    created_at?: string
+    created_by?: string
+    updated_by?: string
+  }
+  type Profile = { id: string; company_name?: string; email?: string; role?: string; created_at?: string }
+  type AuditLog = { id: string; action: string; entity: string; details: string; performed_by: string; created_at: string }
+  type ClientDirectory = { id: string; client_id_number: string; company_name: string; contact_email?: string; created_at?: string }
+
+  const[allLogs, setAllLogs] = useState<Accident[]>([])
+  const [tamperingLogs, setTamperingLogs] = useState<TamperingIncident[]>([])
+  const [profiles, setProfiles] = useState<Profile[]>([]) 
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
+  const[clientList, setClientList] = useState<ClientDirectory[]>([])
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null) 
   
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCreatingUser, setIsCreatingUser] = useState(false)
   const[isAddingClient, setIsAddingClient] = useState(false)
-  const [selectedAccident, setSelectedAccident] = useState<any | null>(null)
+  const [selectedAccident, setSelectedAccident] = useState<Accident | null>(null)
   
   const [showImportModal, setShowImportModal] = useState(false)
-  const [importData, setImportData] = useState<any[]>([])
+  const [importData, setImportData] = useState<Record<string, unknown>[]>([])
   const[isImporting, setIsImporting] = useState(false)
+  const [isTamperingSubmitting, setIsTamperingSubmitting] = useState(false)
 
   const [isEditing, setIsEditing] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -42,8 +93,6 @@ export default function AdminDashboard() {
   const [geoSuccess, setGeoSuccess] = useState(false)
   const [showManualGPS, setShowManualGPS] = useState(false) 
 
-  const printRef = useRef<HTMLDivElement>(null)
-  
   const [formData, setFormData] = useState({
     vehicle_number: '', accident_date: '', accident_time: '',
     place: '', driver_name: '', driver_contact: '', company_name: '', client_email: '', client_id_number: '',
@@ -57,13 +106,136 @@ export default function AdminDashboard() {
     vehiclePic: null as File | null, driverPic: null as File | null,
     frontVideo: null as File | null, rearVideo: null as File | null, investigationDoc: null as File | null,
   })
+  const [tamperingFormData, setTamperingFormData] = useState({
+    client_name: '',
+    vehicle_number: '',
+    driver_name: '',
+    driver_contact_number: '',
+    tampering_details: '',
+    address: '',
+    technician_name: '',
+    technician_contact_number: '',
+    tampering_repair_charge: '',
+  })
+  const [tamperingFiles, setTamperingFiles] = useState({
+    tamperingImage: null as File | null,
+    repairDeviceImage: null as File | null,
+  })
 
   const [newUser, setNewUser] = useState({ email: '', password: '', role: 'client', company_name: '' })
   const[newClientDir, setNewClientDir] = useState({ client_id_number: '', company_name: '', contact_email: '' })
+  const [appSettings, setAppSettings] = useState(() => ({
+    theme: 'light' as 'light' | 'dark',
+    primaryColor: 'indigo' as 'emerald' | 'blue' | 'indigo' | 'orange',
+    navStyle: 'blend' as 'blend' | 'discrete' | 'evident',
+    layout: 'vertical' as 'vertical' | 'horizontal',
+    orientation: 'ltr' as 'ltr' | 'rtl',
+    enforceUppercase: true,
+    requireTenDigitPhone: true,
+    requireEvidence: true,
+  }))
+  const [showSettings, setShowSettings] = useState(false)
+  const [tamperingEditingId, setTamperingEditingId] = useState<string | null>(null)
+  const [existingTamperingEvidence, setExistingTamperingEvidence] = useState({
+    tampering_image_url: '',
+    repair_device_image_url: '',
+  })
+  const toggleSetting = (key: 'enforceUppercase' | 'requireTenDigitPhone' | 'requireEvidence') => {
+    setAppSettings(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const toUppercaseText = (value: string) => appSettings.enforceUppercase ? value.toUpperCase() : value
+  const normalizeEmail = (value: string) => value.trim().toLowerCase()
+  const normalizePhoneNumber = (value: string) => value.replace(/\D/g, '').slice(0, 10)
+  const isValidPhoneNumber = (value: string) => !appSettings.requireTenDigitPhone || /^\d{10}$/.test(normalizePhoneNumber(value))
+  const applyTheme = (theme: 'light' | 'dark') => {
+    syncThemeToDom(theme)
+    setAppSettings(prev => ({ ...prev, theme }))
+  }
+  const applyPrimaryColor = (preset: 'emerald' | 'blue' | 'indigo' | 'orange') => {
+    if (typeof document === 'undefined') return
+    const palette: Record<typeof preset, string> = {
+      emerald: '#10b981',
+      blue: '#3b82f6',
+      indigo: '#6366f1',
+      orange: '#f97316',
+    } as any
+    const accent = palette[preset]
+    document.documentElement.style.setProperty('--accent', accent)
+    document.documentElement.style.setProperty('--accent-soft', `${accent}1a`)
+    document.documentElement.style.setProperty('--client-primary', accent)
+  }
+  const applyOrientation = (dir: 'ltr' | 'rtl') => {
+    if (typeof document === 'undefined') return
+    document.documentElement.setAttribute('dir', dir)
+  }
+  const syncThemeToDom = (theme: 'light' | 'dark') => {
+    if (typeof window === 'undefined') return
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    document.body.classList.toggle('dark', theme === 'dark')
+    const surface = theme === 'dark' ? '#0b1220' : '#f8fafc'
+    const card = theme === 'dark' ? '#111827' : '#ffffff'
+    const text = theme === 'dark' ? '#e2e8f0' : '#0f172a'
+    document.documentElement.style.setProperty('--surface', surface)
+    document.documentElement.style.setProperty('--card', card)
+    document.documentElement.style.setProperty('--text', text)
+    window.localStorage.setItem('dashboard-theme', theme)
+  }
+  const hasIncidentEvidence = () => ({
+    vehicle: Boolean(files.vehiclePic || (isEditing && formData.existing_vehicle)),
+    driver: Boolean(files.driverPic || (isEditing && formData.existing_driver)),
+    front: Boolean(files.frontVideo || (isEditing && formData.existing_front)),
+    rear: Boolean(files.rearVideo || (isEditing && formData.existing_rear)),
+    document: Boolean(files.investigationDoc || (isEditing && formData.existing_doc)),
+  })
+
+  const handlePrint = () => { if (typeof window !== 'undefined') setTimeout(() => window.print(), 50) }
+
+  const accentColor = (primary: 'emerald' | 'blue' | 'indigo' | 'orange') => {
+    if (primary === 'emerald') return '#10b981'
+    if (primary === 'blue') return '#3b82f6'
+    if (primary === 'orange') return '#f97316'
+    return '#6366f1'
+  }
+  const navBackground = (style: 'blend' | 'discrete' | 'evident', accent: string) => {
+    if (style === 'discrete') return '#0f172a'
+    if (style === 'evident') return accent
+    return '#020617'
+  }
 
   useEffect(() => { 
-    fetchCurrentUser(); fetchLogs(); fetchProfiles(); fetchAuditLogs(); fetchClientDirectory();
+    fetchCurrentUser(); fetchLogs(); fetchTamperingLogs(); fetchProfiles(); fetchAuditLogs(); fetchClientDirectory();
   },[])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = window.localStorage.getItem('dashboard-theme')
+      const savedSettings = window.localStorage.getItem('admin-app-settings')
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        setAppSettings(prev => ({ ...prev, theme: savedTheme }))
+        syncThemeToDom(savedTheme)
+      }
+      if (savedSettings) {
+        try {
+          const parsed = JSON.parse(savedSettings)
+          setAppSettings(prev => ({ ...prev, ...parsed }))
+          applyPrimaryColor(parsed.primaryColor || 'indigo')
+          applyOrientation(parsed.orientation || 'ltr')
+        } catch {}
+      }
+      applyPrimaryColor(appSettings.primaryColor)
+      applyOrientation(appSettings.orientation)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('admin-app-settings', JSON.stringify(appSettings))
+      syncThemeToDom(appSettings.theme)
+      applyPrimaryColor(appSettings.primaryColor)
+      applyOrientation(appSettings.orientation)
+    }
+  }, [appSettings])
 
   const fetchCurrentUser = async () => {
     try {
@@ -78,6 +250,11 @@ export default function AdminDashboard() {
   const fetchLogs = async () => {
     const { data } = await supabase.from('accidents').select('*').order('created_at', { ascending: false })
     if (data) setAllLogs(data)
+  }
+
+  const fetchTamperingLogs = async () => {
+    const { data } = await supabase.from('tampering_incidents').select('*').order('created_at', { ascending: false })
+    if (data) setTamperingLogs(data)
   }
 
   const fetchProfiles = async () => {
@@ -155,9 +332,14 @@ export default function AdminDashboard() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsCreatingUser(true)
-    const res = await createSystemUser(newUser)
+    const normalizedUser = {
+      ...newUser,
+      email: normalizeEmail(newUser.email),
+      company_name: toUppercaseText(newUser.company_name),
+    }
+    const res = await createSystemUser(normalizedUser)
     if (res.error) { alert("Failed to create user: " + res.error) } else {
-      await logAudit('PROVISION', 'User Account', newUser.email, `Created new ${newUser.role} account for ${newUser.company_name}`)
+      await logAudit('PROVISION', 'User Account', normalizedUser.email, `Created new ${normalizedUser.role} account for ${normalizedUser.company_name}`)
       alert("✅ New Account Generated & Secured!"); setNewUser({ email: '', password: '', role: 'client', company_name: '' }); fetchProfiles() 
     }
     setIsCreatingUser(false)
@@ -166,9 +348,14 @@ export default function AdminDashboard() {
   const handleAddClientToDirectory = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsAddingClient(true)
-    const { error } = await supabase.from('clients').insert([newClientDir])
+    const normalizedClient = {
+      client_id_number: toUppercaseText(newClientDir.client_id_number),
+      company_name: toUppercaseText(newClientDir.company_name),
+      contact_email: normalizeEmail(newClientDir.contact_email),
+    }
+    const { error } = await supabase.from('clients').insert([normalizedClient])
     if (error) { alert("Failed to save client: " + error.message) } else {
-      await logAudit('CREATE', 'Client Directory', newClientDir.client_id_number, `Added ${newClientDir.company_name} to Master Directory`)
+      await logAudit('CREATE', 'Client Directory', normalizedClient.client_id_number, `Added ${normalizedClient.company_name} to Master Directory`)
       alert("✅ Client Successfully Added to Directory!"); setNewClientDir({ client_id_number: '', company_name: '', contact_email: '' }); fetchClientDirectory()
     }
     setIsAddingClient(false)
@@ -217,8 +404,31 @@ export default function AdminDashboard() {
     return publicUrl
   }
 
+  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const incidentEvidence = hasIncidentEvidence()
+    const normalizedDriverContact = appSettings.requireTenDigitPhone ? normalizePhoneNumber(formData.driver_contact) : formData.driver_contact.trim()
+    if (!isValidPhoneNumber(normalizedDriverContact)) {
+      alert('Driver contact number must be exactly 10 digits.')
+      return
+    }
+    if (appSettings.requireEvidence) {
+      if (!incidentEvidence.vehicle || !incidentEvidence.driver) {
+        alert('Vehicle image and driver image are mandatory evidence for every incident.')
+        return
+      }
+      if (formData.video_provided === 'Yes' && (!incidentEvidence.front || !incidentEvidence.rear)) {
+        alert('Front and rear dashcam videos are mandatory when video evidence is marked as provided.')
+        return
+      }
+      if (formData.video_provided === 'No' && !incidentEvidence.document) {
+        alert('Investigation document is mandatory when video evidence is not available.')
+        return
+      }
+    }
+
     setIsSubmitting(true)
     try {
       const[vehicle_img, driver_img, front_vid, rear_vid, inv_doc] = await Promise.all([
@@ -230,13 +440,13 @@ export default function AdminDashboard() {
       ]);
 
       const payload = {
-        vehicle_number: formData.vehicle_number, accident_date: formData.accident_date, accident_time: formData.accident_time,
-        place: formData.place, driver_name: formData.driver_name, driver_contact: formData.driver_contact, 
-        company_name: formData.company_name, client_id_number: formData.client_id_number, video_provided: formData.video_provided === 'Yes', remarks: formData.remarks, 
+        vehicle_number: toUppercaseText(formData.vehicle_number), accident_date: formData.accident_date, accident_time: formData.accident_time,
+        place: toUppercaseText(formData.place), driver_name: toUppercaseText(formData.driver_name), driver_contact: normalizedDriverContact, 
+        company_name: toUppercaseText(formData.company_name), client_id_number: toUppercaseText(formData.client_id_number), video_provided: formData.video_provided === 'Yes', remarks: toUppercaseText(formData.remarks), 
         status: formData.status, lat: formData.lat, lng: formData.lng,
         vehicle_image_url: vehicle_img, driver_image_url: driver_img, front_video_url: front_vid, rear_video_url: rear_vid, investigation_doc_url: inv_doc,
         updated_by: currentUser?.email || 'System Admin'
-      }
+      } 
 
       if (isEditing) {
         const { error } = await supabase.from('accidents').update(payload).eq('id', editingId)
@@ -253,6 +463,124 @@ export default function AdminDashboard() {
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: keyof typeof files) => { if (e.target.files && e.target.files[0]) setFiles({ ...files,[type]: e.target.files[0] }) }
+  const handleTamperingFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: keyof typeof tamperingFiles) => {
+    if (e.target.files && e.target.files[0]) setTamperingFiles({ ...tamperingFiles, [type]: e.target.files[0] })
+  }
+
+  const resetTamperingForm = () => {
+    setTamperingFormData({
+      client_name: '',
+      vehicle_number: '',
+      driver_name: '',
+      driver_contact_number: '',
+      tampering_details: '',
+      address: '',
+      technician_name: '',
+      technician_contact_number: '',
+      tampering_repair_charge: '',
+    })
+    setTamperingFiles({ tamperingImage: null, repairDeviceImage: null })
+    setTamperingEditingId(null)
+    setExistingTamperingEvidence({ tampering_image_url: '', repair_device_image_url: '' })
+  }
+
+  const startTamperingEdit = (incident: any) => {
+    setActiveTab('tampering')
+    setTamperingEditingId(incident.id)
+    setExistingTamperingEvidence({
+      tampering_image_url: incident.tampering_image_url || '',
+      repair_device_image_url: incident.repair_device_image_url || '',
+    })
+    setTamperingFormData({
+      client_name: incident.client_name || '',
+      vehicle_number: incident.vehicle_number || '',
+      driver_name: incident.driver_name || '',
+      driver_contact_number: incident.driver_contact_number || incident.driver_contact || '',
+      tampering_details: incident.tampering_details || '',
+      address: incident.address || '',
+      technician_name: incident.technician_name || '',
+      technician_contact_number: incident.technician_contact_number || incident.technician_contact || '',
+      tampering_repair_charge: incident.tampering_repair_charge ? String(incident.tampering_repair_charge) : '',
+    })
+    setTamperingFiles({ tamperingImage: null, repairDeviceImage: null })
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleTamperingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const normalizedDriverContact = appSettings.requireTenDigitPhone ? normalizePhoneNumber(tamperingFormData.driver_contact_number) : tamperingFormData.driver_contact_number.trim()
+    const normalizedTechnicianContact = appSettings.requireTenDigitPhone ? normalizePhoneNumber(tamperingFormData.technician_contact_number) : tamperingFormData.technician_contact_number.trim()
+    if (!isValidPhoneNumber(normalizedDriverContact) || !isValidPhoneNumber(normalizedTechnicianContact)) {
+      alert('Driver and technician mobile numbers must be exactly 10 digits.')
+      return
+    }
+    if (appSettings.requireEvidence) {
+      if (!tamperingFiles.tamperingImage && !existingTamperingEvidence.tampering_image_url) {
+        alert('Tampering image is required before submission.')
+        return
+      }
+      if (!tamperingFiles.repairDeviceImage && !existingTamperingEvidence.repair_device_image_url) {
+        alert('Repair device image is required before submission.')
+        return
+      }
+    }
+
+    setIsTamperingSubmitting(true)
+    try {
+      const [tamperingImageUrl, repairDeviceImageUrl] = await Promise.all([
+        tamperingFiles.tamperingImage ? uploadMedia(tamperingFiles.tamperingImage, 'tampering/tampering-images') : Promise.resolve(existingTamperingEvidence.tampering_image_url || null),
+        tamperingFiles.repairDeviceImage ? uploadMedia(tamperingFiles.repairDeviceImage, 'tampering/repair-device-images') : Promise.resolve(existingTamperingEvidence.repair_device_image_url || null),
+      ])
+
+      const payload = {
+        client_name: toUppercaseText(tamperingFormData.client_name),
+        vehicle_number: toUppercaseText(tamperingFormData.vehicle_number),
+        driver_name: toUppercaseText(tamperingFormData.driver_name),
+        driver_contact_number: normalizedDriverContact,
+        tampering_details: toUppercaseText(tamperingFormData.tampering_details),
+        address: toUppercaseText(tamperingFormData.address),
+        technician_name: toUppercaseText(tamperingFormData.technician_name),
+        technician_contact_number: normalizedTechnicianContact,
+        tampering_repair_charge: tamperingFormData.tampering_repair_charge ? Number(tamperingFormData.tampering_repair_charge) : null,
+        tampering_image_url: tamperingImageUrl,
+        repair_device_image_url: repairDeviceImageUrl,
+        status: 'Pending Approval',
+        rejection_reason: null,
+        updated_by: currentUser?.email || 'System Admin',
+      }
+
+      const selectedClient = clientList.find((client) => toUppercaseText(client.company_name || '') === payload.client_name)
+
+      if (tamperingEditingId) {
+        const { error } = await supabase.from('tampering_incidents').update(payload).eq('id', tamperingEditingId)
+        if (error) throw error
+        await logAudit('UPDATE', 'Tampering Incident', payload.vehicle_number, 'Edited & resubmitted after client rejection')
+      } else {
+        const { error } = await supabase.from('tampering_incidents').insert([{ ...payload, created_by: currentUser?.email || 'System Admin' }])
+        if (error) throw error
+        await logAudit('CREATE', 'Tampering Incident', payload.vehicle_number, `Logged tampering incident for ${payload.client_name}`)
+      }
+
+      if (selectedClient?.contact_email) {
+        await sendTamperingIncidentEmail({
+          clientEmail: selectedClient.contact_email,
+          clientName: payload.client_name,
+          vehicleNumber: payload.vehicle_number,
+          technicianName: payload.technician_name,
+        })
+      }
+
+      alert(tamperingEditingId ? '✅ Tampering record updated and resubmitted.' : '✅ Tampering device incident created and sent for client approval.')
+      resetTamperingForm()
+      setTamperingEditingId(null)
+      setExistingTamperingEvidence({ tampering_image_url: '', repair_device_image_url: '' })
+      fetchTamperingLogs()
+    } catch (error: any) {
+      alert('Error: ' + error.message)
+    } finally {
+      setIsTamperingSubmitting(false)
+    }
+  }
 
   const filteredLogs = allLogs.filter(log => {
     if (dateFilter === 'all') return true;
@@ -263,6 +591,8 @@ export default function AdminDashboard() {
     if (dateFilter === 'year' && logDate.getFullYear() !== now.getFullYear()) return false;
     return true;
   });
+
+  const recentTamperingLogs = tamperingLogs
 
   const driverStats = filteredLogs.reduce((acc: any, log) => {
     const driver = log.driver_name || 'Unknown Driver';
@@ -310,29 +640,169 @@ export default function AdminDashboard() {
     return 'bg-slate-100 text-slate-700 border-slate-200'
   }
 
+  const getTamperingStatusColor = (status: string) => {
+    if (status === 'Approved') return 'bg-emerald-100 text-emerald-700 border-emerald-200'
+    if (status === 'Rejected') return 'bg-rose-100 text-rose-700 border-rose-200'
+    return 'bg-amber-100 text-amber-800 border-amber-200'
+  }
+
+  const isHorizontalLayout = appSettings.layout === 'horizontal'
+
   return (
-    <div className="flex min-h-screen lg:h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden relative">
+    <div id="admin-app-shell" className={`${isHorizontalLayout ? 'flex flex-col' : 'flex flex-row'} min-h-screen lg:h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden relative`} dir={appSettings.orientation}>
+      <style dangerouslySetInnerHTML={{__html: `
+        :root {
+          --accent: var(--client-primary, #6366f1);
+          --accent-soft: rgba(99, 102, 241, 0.08);
+          --surface: ${appSettings.theme === 'dark' ? '#0b1220' : '#f8fafc'};
+          --card: ${appSettings.theme === 'dark' ? '#111827' : '#ffffff'};
+          --text: ${appSettings.theme === 'dark' ? '#e2e8f0' : '#0f172a'};
+        }
+        body { background: var(--surface); color: var(--text); }
+        .btn-accent { background: var(--accent); color: white; border-color: var(--accent); }
+        .pill-accent { background: var(--accent-soft); color: var(--text); border-color: var(--accent); }
+      `}} />
       
       {/* PERFECT PDF PRINT ENGINE CSS */}
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
-          @page { size: A4 portrait; margin: 15mm; }
-          body { background-color: white !important; -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
+          @page { size: A4 portrait; margin: 10mm; }
+          html, body { background: white !important; width: auto !important; height: auto !important; min-height: 100% !important; overflow: visible !important; -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
+          #admin-app-shell { height: auto !important; min-height: 100% !important; overflow: visible !important; }
           body > div > aside, body > div > main { display: none !important; }
-          
-          #print-wrapper { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; background: white !important; padding: 0 !important; margin: 0 !important; display: block !important; }
-          #print-area { position: static !important; width: 100% !important; max-height: none !important; overflow: visible !important; box-shadow: none !important; border: none !important; display: block !important; }
-          
+
+          #print-wrapper { position: static !important; width: 100% !important; background: white !important; margin: 0 auto !important; padding: 0 !important; display: block !important; }
+          #print-area { position: static !important; width: 100% !important; max-width: 200mm !important; margin: 0 auto !important; height: auto !important; overflow: visible !important; box-shadow: none !important; border: none !important; display: block !important; }
+
           /* Force single column stacked layout for print */
           .print-grid { display: block !important; }
           .print-stack-item { page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 24px !important; border: 1px solid #e2e8f0 !important; border-radius: 12px !important; box-shadow: none !important; }
-          
+
           /* Prevent stretched images */
           img { max-height: 300px !important; object-fit: contain !important; background-color: #f8fafc !important; }
-          
+
           .no-print { display: none !important; }
         }
+        :root { --client-primary: #6366f1; }
       `}} />
+
+      {showSettings && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 flex justify-end">
+          <div className="w-full max-w-md bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div>
+                <p className="text-sm font-black text-slate-900">App Settings</p>
+                <p className="text-xs text-slate-500">Control admin experience.</p>
+              </div>
+              <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-slate-600"><X size={18}/></button>
+            </div>
+            <div className="p-6 space-y-6 overflow-y-auto">
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase mb-3">Primary color</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { key: 'emerald', label: 'Chateau Green', color: '#10b981' },
+                    { key: 'blue', label: 'Neon Blue', color: '#3b82f6' },
+                    { key: 'indigo', label: 'Royal Blue', color: '#6366f1' },
+                    { key: 'orange', label: 'Tomato Orange', color: '#f97316' },
+                  ].map(opt => {
+                    const active = appSettings.primaryColor === opt.key
+                    return (
+                      <button key={opt.key} onClick={() => { setAppSettings(prev => ({ ...prev, primaryColor: opt.key as any })); applyPrimaryColor(opt.key as any) }} className="flex items-center gap-2 px-3 py-2 rounded-xl border" style={active ? { borderColor: 'var(--accent)', background: 'var(--accent-soft)', color: 'var(--text)' } : {}}>
+                        <span className="h-3 w-3 rounded-full" style={{ backgroundColor: opt.color }}></span>
+                        <span className="text-xs font-semibold">{opt.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase mb-3">Color scheme</p>
+                <div className="flex gap-3">
+                  {['light','dark'].map(opt => {
+                    const active = appSettings.theme === opt
+                    return (
+                      <button key={opt} onClick={() => applyTheme(opt as 'light'|'dark')} className="px-4 py-2 rounded-xl border text-sm font-bold" style={active ? { borderColor: 'var(--accent)', background: 'var(--accent-soft)', color: 'var(--text)' } : {}}>
+                        {opt === 'light' ? 'Light' : 'Dark'}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase mb-3">Nav color</p>
+                <div className="flex gap-3">
+                  {[
+                    { key: 'blend', label: 'Blend-in' },
+                    { key: 'discrete', label: 'Discrete' },
+                    { key: 'evident', label: 'Evident' },
+                  ].map(opt => {
+                    const active = appSettings.navStyle === opt.key
+                    return (
+                      <button key={opt.key} onClick={() => setAppSettings(prev => ({ ...prev, navStyle: opt.key as any }))} className="px-4 py-2 rounded-xl border text-sm font-bold" style={active ? { borderColor: 'var(--accent)', background: 'var(--accent-soft)', color: 'var(--text)' } : {}}>
+                        {opt.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase mb-3">Layout</p>
+                <div className="flex gap-3">
+                  {[
+                    { key: 'vertical', label: 'Vertical' },
+                    { key: 'horizontal', label: 'Horizontal' },
+                  ].map(opt => {
+                    const active = appSettings.layout === opt.key
+                    return (
+                      <button key={opt.key} onClick={() => setAppSettings(prev => ({ ...prev, layout: opt.key as any }))} className="flex-1 px-4 py-3 rounded-xl border text-sm font-bold" style={active ? { borderColor: 'var(--accent)', background: 'var(--accent-soft)', color: 'var(--text)' } : {}}>
+                        {opt.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase mb-3">Orientation</p>
+                <div className="flex gap-3">
+                  {[
+                    { key: 'ltr', label: 'Left-to-right' },
+                    { key: 'rtl', label: 'Right-to-left' },
+                  ].map(opt => (
+                    <button key={opt.key} onClick={() => { setAppSettings(prev => ({ ...prev, orientation: opt.key as any })); applyOrientation(opt.key as 'ltr'|'rtl') }} className={`px-4 py-2 rounded-xl border text-sm font-bold ${appSettings.orientation === opt.key ? 'border-[var(--client-primary,#6366f1)] bg-[var(--client-primary,#6366f1)]/10 text-slate-900' : 'border-slate-200 text-slate-700 hover:border-slate-300'}`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase mb-3">Data Rules</p>
+                {[
+                  { key: 'enforceUppercase', title: 'Enforce Uppercase', desc: 'Auto-convert text inputs to uppercase.' },
+                  { key: 'requireTenDigitPhone', title: 'Require 10-digit Phones', desc: 'Validate driver/technician numbers strictly.' },
+                  { key: 'requireEvidence', title: 'Require Evidence', desc: 'Block submissions without required media/docs.' },
+                ].map(rule => (
+                  <div key={rule.key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm mb-3">
+                    <div>
+                      <p className="text-sm font-black text-slate-800">{rule.title}</p>
+                      <p className="text-xs font-medium text-slate-500 mt-1">{rule.desc}</p>
+                    </div>
+                    <button type="button" onClick={() => toggleSetting(rule.key as 'enforceUppercase'|'requireTenDigitPhone'|'requireEvidence')} className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${appSettings[rule.key as keyof typeof appSettings] ? 'bg-[var(--client-primary,#6366f1)]' : 'bg-slate-300'}`}>
+                      <span className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-sm transition ${appSettings[rule.key as keyof typeof appSettings] ? 'translate-x-6' : 'translate-x-1'}`}></span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] font-semibold text-slate-500">Settings persist in this browser and apply instantly.</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* BULK IMPORT MODAL */}
       {showImportModal && (
@@ -349,7 +819,40 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <aside className="hidden lg:flex w-64 bg-slate-900 text-slate-300 flex-col z-20 shadow-xl shrink-0 no-print">
+      {isHorizontalLayout ? (
+        <aside className="w-full min-h-[90px] flex flex-wrap items-center px-6 py-3 gap-3 bg-slate-900 text-slate-100 border-b border-slate-800 no-print">
+          <div className="flex items-center gap-3 mr-2">
+            <div className="bg-indigo-600 p-2 rounded-lg shadow-lg shadow-indigo-900/50"><ShieldAlert className="h-5 w-5 text-white" /></div>
+            <span className="text-sm font-bold">SysAdmin</span>
+          </div>
+          <div className="flex-1 overflow-x-auto flex flex-wrap gap-2">
+            {[
+              { id: 'overview', label: 'Dashboard Overview' },
+              { id: 'pipeline', label: 'Claims Pipeline' },
+              { id: 'risk', label: 'Driver Risk Profiles' },
+              { id: 'log', label: isEditing ? 'Edit Incident Mode' : 'Log Incident' },
+              { id: 'tampering', label: 'Tampering Device Module' },
+              { id: 'directory', label: 'Client Directory' },
+              { id: 'clients', label: 'Web Portal Access' },
+              { id: 'audit', label: 'Security & Audit Logs' },
+            ].map(item => {
+              const accent = accentColor(appSettings.primaryColor)
+              const isActive = activeTab === item.id
+              return (
+                <button key={item.id} onClick={() => { cancelEdit(); setActiveTab(item.id as any); }} className="px-3 py-1.5 rounded-full text-xs font-bold border transition-colors" style={isActive ? { backgroundColor: accent, color: 'white', borderColor: accent } : { borderColor: '#334155', color: '#e2e8f0' }}>
+                  {item.label}
+                </button>
+              )
+            })}
+          </div>
+          <button onClick={() => { supabase.auth.signOut(); router.push('/') }} className="ml-4 text-xs font-bold bg-slate-800 px-3 py-2 rounded-lg border border-slate-700 hover:bg-rose-600 hover:text-white">Sign Out</button>
+        </aside>
+      ) : (() => {
+        const accent = accentColor(appSettings.primaryColor)
+        const navBg = navBackground(appSettings.navStyle, accent)
+        const navBorderClass = appSettings.navStyle === 'evident' ? 'border-r-2' : ''
+        return (
+          <aside className={`hidden lg:flex w-64 text-slate-300 flex-col z-20 shadow-xl shrink-0 no-print ${navBorderClass}`} style={{ backgroundColor: navBg, borderColor: accent }}>
         <div className="p-6">
           <div className="flex items-center gap-2 text-white mb-1">
             <ShieldCheck className="h-7 w-7 text-indigo-500" />
@@ -358,36 +861,67 @@ export default function AdminDashboard() {
           <p className="text-xs text-slate-500 font-bold tracking-widest uppercase mt-2">Control Center</p>
         </div>
         <nav className="flex-1 px-4 space-y-2 mt-6 overflow-y-auto">
-          <button onClick={() => {cancelEdit(); setActiveTab('overview');}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-semibold ${activeTab === 'overview' ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800 hover:text-white'}`}><LayoutDashboard size={18} /> Dashboard Overview</button>
-          <button onClick={() => {cancelEdit(); setActiveTab('pipeline');}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-semibold ${activeTab === 'pipeline' ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800 hover:text-white'}`}><Briefcase size={18} /> Claims Pipeline</button>
-          <button onClick={() => {cancelEdit(); setActiveTab('risk');}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-semibold ${activeTab === 'risk' ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800 hover:text-white'}`}><AlertTriangle size={18} /> Driver Risk Profiles</button>
-          <button onClick={() => {cancelEdit(); setActiveTab('log');}} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-semibold ${activeTab === 'log' ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800 hover:text-white'}`}><Plus size={18} /> {isEditing ? 'Edit Incident Mode' : 'Log Incident'}</button>
+          {[
+            { id: 'overview', label: 'Dashboard Overview', icon: <LayoutDashboard size={18}/> },
+            { id: 'pipeline', label: 'Claims Pipeline', icon: <Briefcase size={18}/> },
+            { id: 'risk', label: 'Driver Risk Profiles', icon: <AlertTriangle size={18}/> },
+            { id: 'log', label: isEditing ? 'Edit Incident Mode' : 'Log Incident', icon: <Plus size={18}/> },
+            { id: 'tampering', label: 'Tampering Device Module', icon: <ShieldAlert size={18}/> },
+          ].map(item => {
+            const isActive = activeTab === item.id
+            const accent = accentColor(appSettings.primaryColor)
+            return (
+              <button key={item.id} onClick={() => {cancelEdit(); setActiveTab(item.id as any);}} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-semibold hover:bg-slate-800 hover:text-white" style={isActive ? { backgroundColor: accent, color: 'white', borderColor: accent } : {}}>
+                {item.icon} {item.label}
+              </button>
+            )
+          })}
           
           <div className="pt-4 mt-4 border-t border-slate-800">
             <p className="text-[10px] font-bold text-slate-500 tracking-widest uppercase mb-3 px-2">CRM & Directory</p>
-            <button onClick={() => setActiveTab('directory')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-semibold ${activeTab === 'directory' ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800 hover:text-white'}`}><BookOpen size={18} /> Client Directory</button>
+            {(() => {
+              const accent = accentColor(appSettings.primaryColor)
+              const isActive = activeTab === 'directory'
+              return (
+                <button onClick={() => setActiveTab('directory')} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-semibold hover:bg-slate-800 hover:text-white" style={isActive ? { backgroundColor: accent, color: 'white', borderColor: accent } : {}}>
+                  <BookOpen size={18}/> Client Directory
+                </button>
+              )
+            })()}
           </div>
 
           <div className="pt-4 mt-4 border-t border-slate-800">
             <p className="text-[10px] font-bold text-slate-500 tracking-widest uppercase mb-3 px-2">System Security</p>
-            <button onClick={() => setActiveTab('clients')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-semibold ${activeTab === 'clients' ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800 hover:text-white'}`}><Users size={18} /> Web Portal Access</button>
-            <button onClick={() => setActiveTab('audit')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-semibold ${activeTab === 'audit' ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800 hover:text-white'}`}><History size={18} /> Security & Audit Logs</button>
+            {['clients','audit'].map(id => {
+              const accent = accentColor(appSettings.primaryColor)
+              const isActive = activeTab === id
+              const label = id === 'clients' ? 'Web Portal Access' : 'Security & Audit Logs'
+              const icon = id === 'clients' ? <Users size={18}/> : <History size={18}/>
+              return (
+                <button key={id} onClick={() => setActiveTab(id as any)} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-semibold hover:bg-slate-800 hover:text-white" style={isActive ? { backgroundColor: accent, color: 'white', borderColor: accent } : {}}>
+                  {icon} {label}
+                </button>
+              )
+            })}
           </div>
         </nav>
         <div className="p-4 border-t border-slate-800">
           <button onClick={() => { supabase.auth.signOut(); router.push('/') }} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-bold text-slate-400 hover:bg-rose-500 hover:text-white transition-all mb-2"><LogOut size={18} /> Secure Sign Out</button>
           <div className="text-center pb-2"><p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-relaxed">© {new Date().getFullYear()} All Rights Reserved<br/>For Ashish Rajput</p></div>
         </div>
-      </aside>
+          </aside>
+        )
+      })()}
 
       <main className="flex-1 flex flex-col min-h-screen lg:h-screen overflow-y-auto bg-slate-50/50 no-print">
-        <header className="bg-white px-4 py-4 sm:px-6 lg:px-8 border-b border-slate-200 shrink-0 sticky top-0 z-10 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div><h2 className="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight">
-            {activeTab === 'overview' && 'System Overview'}
-            {activeTab === 'pipeline' && 'Active Claims Pipeline'}
+      <header className="bg-white px-4 py-4 sm:px-6 lg:px-8 border-b border-slate-200 shrink-0 sticky top-0 z-10 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div><h2 className="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight">
+          {activeTab === 'overview' && 'System Overview'}
+          {activeTab === 'pipeline' && 'Active Claims Pipeline'}
             {activeTab === 'risk' && 'Driver Intelligence & Risk'}
             {activeTab === 'log' && (isEditing ? 'Data Edit Module' : 'Data Entry Module')}
+            {activeTab === 'tampering' && 'Tampering Device Incident Log'}
             {activeTab === 'directory' && 'Master Client Directory'}
             {activeTab === 'clients' && 'Web Portal Access Rules'}
             {activeTab === 'audit' && 'System Audit Trail'}
@@ -402,13 +936,19 @@ export default function AdminDashboard() {
                 </select>
               </div>
             )}
+          <div className="flex items-center justify-between gap-2">
+            <button onClick={() => setShowSettings(true)} className="hidden sm:inline-flex items-center gap-2 bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-full shadow-sm hover:bg-slate-800">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'var(--client-primary, #6366f1)' }}></span>
+              App Settings
+            </button>
             <div className="flex items-center justify-between gap-4 bg-slate-50 border border-slate-200 py-2 px-4 rounded-full shadow-sm hover:shadow-md transition-all cursor-pointer">
               <div className="text-right hidden sm:block">
                 <div className="text-sm font-bold text-slate-900">{currentUser?.company_name || 'System Administrator'}</div>
                 <div className="text-xs font-semibold text-indigo-600">{currentUser?.email || 'Authenticated'}</div>
               </div>
               <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold text-sm shadow-md border border-indigo-200 uppercase">
-                {currentUser?.company_name ? currentUser.company_name.substring(0,2) : 'SA'}
+                  {currentUser?.company_name ? currentUser.company_name.substring(0,2) : 'SA'}
+                </div>
               </div>
             </div>
           </div>
@@ -430,6 +970,7 @@ export default function AdminDashboard() {
             <button onClick={() => {cancelEdit(); setActiveTab('pipeline')}} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase tracking-wide ${activeTab === 'pipeline' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Pipeline</button>
             <button onClick={() => {cancelEdit(); setActiveTab('risk')}} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase tracking-wide ${activeTab === 'risk' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Risk</button>
             <button onClick={() => {cancelEdit(); setActiveTab('log')}} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase tracking-wide ${activeTab === 'log' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>{isEditing ? 'Edit' : 'Log'}</button>
+            <button onClick={() => {cancelEdit(); setActiveTab('tampering')}} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase tracking-wide ${activeTab === 'tampering' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Tampering</button>
             <button onClick={() => setActiveTab('directory')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase tracking-wide ${activeTab === 'directory' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Directory</button>
             <button onClick={() => setActiveTab('clients')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase tracking-wide ${activeTab === 'clients' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Users</button>
             <button onClick={() => setActiveTab('audit')} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase tracking-wide ${activeTab === 'audit' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Audit</button>
@@ -598,9 +1139,9 @@ export default function AdminDashboard() {
                 <div className="px-6 py-5 border-b border-slate-100 bg-slate-50"><h3 className="font-bold text-slate-800 flex items-center gap-2"><Briefcase size={18} className="text-indigo-600"/> Add Client to Master Directory</h3></div>
                 <form onSubmit={handleAddClientToDirectory} className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-                    <div><label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Unique Client ID <span className="text-rose-500">*</span></label><div className="relative"><Hash className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" value={newClientDir.client_id_number} onChange={e => setNewClientDir({...newClientDir, client_id_number: e.target.value})} placeholder="e.g. ACME-001" /></div></div>
-                    <div><label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Company / Entity Name <span className="text-rose-500">*</span></label><div className="relative"><Building2 className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" value={newClientDir.company_name} onChange={e => setNewClientDir({...newClientDir, company_name: e.target.value})} placeholder="Acme Corporation" /></div></div>
-                    <div><label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Alert Email (Optional)</label><div className="relative"><Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input type="email" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" value={newClientDir.contact_email} onChange={e => setNewClientDir({...newClientDir, contact_email: e.target.value})} placeholder="alerts@acme.com" /></div></div>
+                    <div><label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Unique Client ID <span className="text-rose-500">*</span></label><div className="relative"><Hash className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl text-sm font-medium uppercase focus:ring-2 focus:ring-indigo-500 outline-none" value={newClientDir.client_id_number} onChange={e => setNewClientDir({...newClientDir, client_id_number: toUppercaseText(e.target.value)})} placeholder="e.g. ACME-001" /></div></div>
+                    <div><label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Company / Entity Name <span className="text-rose-500">*</span></label><div className="relative"><Building2 className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl text-sm font-medium uppercase focus:ring-2 focus:ring-indigo-500 outline-none" value={newClientDir.company_name} onChange={e => setNewClientDir({...newClientDir, company_name: toUppercaseText(e.target.value)})} placeholder="ACME CORPORATION" /></div></div>
+                    <div><label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Alert Email (Optional)</label><div className="relative"><Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input type="email" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" value={newClientDir.contact_email} onChange={e => setNewClientDir({...newClientDir, contact_email: normalizeEmail(e.target.value)})} placeholder="alerts@acme.com" /></div></div>
                   </div>
                   <div className="mt-6 flex justify-end"><button type="submit" disabled={isAddingClient} className="bg-indigo-600 text-white font-bold py-3 px-8 rounded-xl shadow-md hover:bg-indigo-700 disabled:opacity-50 flex items-center transition-all">{isAddingClient ? <><Loader2 className="animate-spin h-5 w-5 mr-2"/> Saving...</> : <><Plus className="h-5 w-5 mr-2"/> Add to Directory</>}</button></div>
                 </form>
@@ -642,8 +1183,8 @@ export default function AdminDashboard() {
                 <div className="px-6 py-5 border-b border-slate-100 bg-slate-50"><h3 className="font-bold text-slate-800 flex items-center gap-2"><User size={18} className="text-indigo-600"/> Generate Secure Portal Login</h3></div>
                 <form onSubmit={handleCreateUser} className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
-                    <div><label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Company Link</label><div className="relative"><Building2 className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" value={newUser.company_name} onChange={e => setNewUser({...newUser, company_name: e.target.value})} placeholder="Acme Corp" /></div></div>
-                    <div><label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Login Email</label><div className="relative"><Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input required type="email" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} placeholder="admin@acme.com" /></div></div>
+                    <div><label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Company Link</label><div className="relative"><Building2 className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl text-sm font-medium uppercase focus:ring-2 focus:ring-indigo-500 outline-none" value={newUser.company_name} onChange={e => setNewUser({...newUser, company_name: toUppercaseText(e.target.value)})} placeholder="ACME CORP" /></div></div>
+                    <div><label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Login Email</label><div className="relative"><Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input required type="email" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" value={newUser.email} onChange={e => setNewUser({...newUser, email: normalizeEmail(e.target.value)})} placeholder="admin@acme.com" /></div></div>
                     <div><label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Secure Password</label><div className="relative"><Key className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} placeholder="SecurePass123!" /></div></div>
                     <div>
                       <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Account Role</label>
@@ -727,7 +1268,7 @@ export default function AdminDashboard() {
                       <div>
                         <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Company / Client Name <span className="text-rose-500">*</span></label>
                         {isEditing ? (
-                          <input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={formData.company_name} onChange={e => setFormData({...formData, company_name: e.target.value})} placeholder="e.g. Acme Corporation" />
+                          <input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-sm font-medium uppercase focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={formData.company_name} onChange={e => setFormData({...formData, company_name: toUppercaseText(e.target.value)})} placeholder="e.g. ACME CORPORATION" />
                         ) : (
                           <select required className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none cursor-pointer" 
                             value={formData.company_name} 
@@ -758,15 +1299,15 @@ export default function AdminDashboard() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                       <div>
                         <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Vehicle Registration <span className="text-rose-500">*</span></label>
-                        <div className="relative"><Car className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-11 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={formData.vehicle_number} onChange={e => setFormData({...formData, vehicle_number: e.target.value})} placeholder="AB 12 CD 3456" /></div>
+                        <div className="relative"><Car className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-11 rounded-xl text-sm font-medium uppercase focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={formData.vehicle_number} onChange={e => setFormData({...formData, vehicle_number: toUppercaseText(e.target.value)})} placeholder="AB 12 CD 3456" /></div>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Driver Name <span className="text-rose-500">*</span></label>
-                        <div className="relative"><User className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-11 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={formData.driver_name} onChange={e => setFormData({...formData, driver_name: e.target.value})} placeholder="John Doe" /></div>
+                        <div className="relative"><User className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-11 rounded-xl text-sm font-medium uppercase focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={formData.driver_name} onChange={e => setFormData({...formData, driver_name: toUppercaseText(e.target.value)})} placeholder="JOHN DOE" /></div>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Driver Contact No. <span className="text-rose-500">*</span></label>
-                        <div className="relative"><Phone className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-11 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={formData.driver_contact} onChange={e => setFormData({...formData, driver_contact: e.target.value})} placeholder="+91 9876543210" /></div>
+                        <div className="relative"><Phone className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" /><input required type="text" inputMode="numeric" maxLength={appSettings.requireTenDigitPhone ? 10 : 16} className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-11 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={formData.driver_contact} onChange={e => setFormData({...formData, driver_contact: appSettings.requireTenDigitPhone ? normalizePhoneNumber(e.target.value) : e.target.value})} placeholder="9876543210" /></div>
                       </div>
                     </div>
 
@@ -786,7 +1327,7 @@ export default function AdminDashboard() {
                       <div className="flex gap-3">
                         <div className="relative flex-1">
                           <MapPin className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" />
-                          <input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-11 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={formData.place} onChange={e => setFormData({...formData, place: e.target.value})} placeholder="e.g. Mumbai, India" />
+                          <input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-11 rounded-xl text-sm font-medium uppercase focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={formData.place} onChange={e => setFormData({...formData, place: toUppercaseText(e.target.value)})} placeholder="e.g. MUMBAI, INDIA" />
                         </div>
                         <button type="button" onClick={handleGeocode} disabled={isGeocoding} className="bg-slate-900 hover:bg-slate-800 text-white px-5 rounded-xl text-sm font-bold transition-all flex items-center justify-center min-w-[150px] shadow-md active:scale-95 disabled:opacity-70">
                           {isGeocoding ? <Loader2 className="animate-spin h-4 w-4 mr-2"/> : geoSuccess ? <CheckCircle2 className="h-4 w-4 text-emerald-400 mr-2"/> : <MapPin className="h-4 w-4 mr-2"/>}
@@ -804,7 +1345,7 @@ export default function AdminDashboard() {
 
                     <div>
                       <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Remarks / Additional Notes</label>
-                      <textarea rows={4} className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all resize-none" value={formData.remarks} onChange={e => setFormData({...formData, remarks: e.target.value})} placeholder="Provide any additional context about the incident..." />
+                      <textarea rows={4} className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-sm font-medium uppercase focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all resize-none" value={formData.remarks} onChange={e => setFormData({...formData, remarks: toUppercaseText(e.target.value)})} placeholder="PROVIDE ANY ADDITIONAL CONTEXT ABOUT THE INCIDENT..." />
                     </div>
                   </div>
                 </div>
@@ -861,16 +1402,185 @@ export default function AdminDashboard() {
               </form>
             </div>
           )}
+
+          {activeTab === 'tampering' && (
+            <div className="animate-in fade-in duration-300 max-w-[1400px] mx-auto space-y-8">
+              <form onSubmit={handleTamperingSubmit} className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                <div className="xl:col-span-2">
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
+                      <div>
+                        <h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><FileText className="text-indigo-600"/> Tampering Device Information</h3>
+                        <p className="text-sm text-slate-500 mt-1 font-medium">Add tampering details using the same structured data-entry style as the incident information module.</p>
+                      </div>
+                      {tamperingEditingId && (
+                        <span className="px-3 py-1 text-[11px] font-black rounded-full bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wide">Edit Mode</span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Company / Client Name <span className="text-rose-500">*</span></label>
+                        <select required className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none cursor-pointer" value={tamperingFormData.client_name} onChange={(e) => setTamperingFormData({ ...tamperingFormData, client_name: e.target.value })}>
+                          <option value="">Select from Directory...</option>
+                          {clientList.map((client) => (
+                            <option key={client.id} value={client.company_name}>[{client.client_id_number}] {client.company_name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Vehicle Registration <span className="text-rose-500">*</span></label>
+                        <div className="relative"><Car className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-11 rounded-xl text-sm font-medium uppercase focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={tamperingFormData.vehicle_number} onChange={(e) => setTamperingFormData({ ...tamperingFormData, vehicle_number: toUppercaseText(e.target.value) })} placeholder="AB 12 CD 3456" /></div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Driver Name <span className="text-rose-500">*</span></label>
+                        <div className="relative"><User className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-11 rounded-xl text-sm font-medium uppercase focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={tamperingFormData.driver_name} onChange={(e) => setTamperingFormData({ ...tamperingFormData, driver_name: toUppercaseText(e.target.value) })} placeholder="DRIVER FULL NAME" /></div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Driver Contact No. <span className="text-rose-500">*</span></label>
+                        <div className="relative"><Phone className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" /><input required type="text" inputMode="numeric" maxLength={appSettings.requireTenDigitPhone ? 10 : 16} className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-11 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={tamperingFormData.driver_contact_number} onChange={(e) => setTamperingFormData({ ...tamperingFormData, driver_contact_number: appSettings.requireTenDigitPhone ? normalizePhoneNumber(e.target.value) : e.target.value })} placeholder="9876543210" /></div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Technician Name <span className="text-rose-500">*</span></label>
+                        <div className="relative"><UserCircle className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-11 rounded-xl text-sm font-medium uppercase focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={tamperingFormData.technician_name} onChange={(e) => setTamperingFormData({ ...tamperingFormData, technician_name: toUppercaseText(e.target.value) })} placeholder="TECHNICIAN NAME" /></div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Technician Contact No. <span className="text-rose-500">*</span></label>
+                        <div className="relative"><Phone className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" /><input required type="text" inputMode="numeric" maxLength={appSettings.requireTenDigitPhone ? 10 : 16} className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-11 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={tamperingFormData.technician_contact_number} onChange={(e) => setTamperingFormData({ ...tamperingFormData, technician_contact_number: appSettings.requireTenDigitPhone ? normalizePhoneNumber(e.target.value) : e.target.value })} placeholder="9000000000" /></div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-6 mb-6">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Exact Address <span className="text-rose-500">*</span></label>
+                        <div className="relative"><MapPin className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-11 rounded-xl text-sm font-medium uppercase focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={tamperingFormData.address} onChange={(e) => setTamperingFormData({ ...tamperingFormData, address: toUppercaseText(e.target.value) })} placeholder="SITE OR SERVICE ADDRESS" /></div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Charge of Tampering Repair</label>
+                        <div className="relative"><Hash className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" /><input type="number" min="0" step="0.01" className="w-full bg-slate-50 border border-slate-200 p-3.5 pl-11 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all" value={tamperingFormData.tampering_repair_charge} onChange={(e) => setTamperingFormData({ ...tamperingFormData, tampering_repair_charge: e.target.value })} placeholder="Optional repair amount" /></div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Tampering Details <span className="text-rose-500">*</span></label>
+                      <textarea required rows={5} className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-sm font-medium uppercase focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all resize-none" value={tamperingFormData.tampering_details} onChange={(e) => setTamperingFormData({ ...tamperingFormData, tampering_details: toUppercaseText(e.target.value) })} placeholder="PROVIDE FULL TAMPERING DETAILS, REPAIR OBSERVATIONS, AND NOTES FOR CLIENT REVIEW..." />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="xl:col-span-1">
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 h-full flex flex-col">
+                    <h3 className="text-lg font-black text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-4 mb-6"><UploadCloud className="text-indigo-600"/> Evidence Uploads</h3>
+
+                    <div className="space-y-5 flex-1">
+                      {[
+                        { key: 'tamperingImage', label: 'Tampering Image', icon: <ImageIcon size={24}/> },
+                        { key: 'repairDeviceImage', label: 'Repair Device Image', icon: <ImageIcon size={24}/> },
+                      ].map((field) => (
+                        <div key={field.key} className="relative">
+                          <input type="file" id={field.key} accept="image/*" className="hidden" onChange={(e) => handleTamperingFileChange(e, field.key as keyof typeof tamperingFiles)} />
+                          {(() => {
+                            const existing = field.key === 'tamperingImage' ? existingTamperingEvidence.tampering_image_url : existingTamperingEvidence.repair_device_image_url
+                            const hasNew = Boolean(tamperingFiles[field.key as keyof typeof tamperingFiles])
+                            return (
+                              <label htmlFor={field.key} className={`cursor-pointer flex items-center p-4 border-2 border-dashed rounded-xl transition-all group ${hasNew || existing ? 'border-emerald-400 bg-emerald-50' : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-indigo-400'}`}>
+                                <div className={`p-3 rounded-lg mr-4 transition-colors ${hasNew || existing ? 'bg-emerald-100 text-emerald-600' : 'bg-white text-slate-400 group-hover:text-indigo-500 shadow-sm'}`}>{field.icon}</div>
+                                <div className="flex-1 overflow-hidden">
+                                  <p className={`text-sm font-bold truncate ${hasNew || existing ? 'text-emerald-700' : 'text-slate-700'}`}>{field.label}</p>
+                                  <p className="text-[10px] font-bold text-slate-500 truncate mt-0.5 uppercase tracking-wide">
+                                    {tamperingFiles[field.key as keyof typeof tamperingFiles]?.name || (existing ? 'Existing file will be kept' : 'Click to browse files')}
+                                  </p>
+                                </div>
+                                {(hasNew || existing) && <CheckCircle className="text-emerald-500 ml-2 shrink-0" size={20}/>}
+                              </label>
+                            )
+                          })()}
+                        </div>
+                      ))}
+
+                      {appSettings.requireEvidence && (
+                        <div className="pt-4 border-t border-slate-100">
+                          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                            <p className="text-xs font-black uppercase tracking-widest text-amber-700">Required Evidence</p>
+                            <p className="mt-1 text-sm font-medium text-amber-800">Both tampering and repair device images must be uploaded before the record can be submitted.</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-8 mt-4 border-t border-slate-100 space-y-3">
+                      <button type="submit" disabled={isTamperingSubmitting} className="w-full bg-indigo-600 text-white font-extrabold text-base py-4 px-6 rounded-xl hover:bg-indigo-700 disabled:bg-indigo-400 flex items-center justify-center shadow-lg shadow-indigo-200 transition-all">
+                        {isTamperingSubmitting ? <><Loader2 className="animate-spin mr-3 h-6 w-6" /> Processing Data...</> : tamperingEditingId ? 'Update & Resubmit' : 'Submit Complete Record'}
+                      </button>
+                      <button type="button" onClick={resetTamperingForm} className="w-full rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-bold text-slate-700 transition-all hover:bg-slate-50">
+                        Clear Form
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/60">
+                  <h3 className="text-lg font-black text-slate-800">Latest Client Responses</h3>
+                  <p className="text-sm text-slate-500 mt-1 font-medium">When the client approves or rejects from the client panel, the updated status will appear here automatically.</p>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {recentTamperingLogs.length > 0 ? recentTamperingLogs.map((incident) => (
+                    <div key={incident.id} className="px-6 py-5">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-base font-black text-slate-900">{incident.client_name}</p>
+                            <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">{incident.vehicle_number}</span>
+                            <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold ${getTamperingStatusColor(incident.status)}`}>{incident.status}</span>
+                          </div>
+                          <p className="text-sm font-medium text-slate-600">{incident.driver_name} • {incident.technician_name}</p>
+                          <p className="text-xs font-medium text-slate-500">Created on {new Date(incident.created_at).toLocaleString()}</p>
+                          {incident.rejection_reason ? <p className="max-w-2xl rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{incident.rejection_reason}</p> : null}
+                          {incident.status === 'Rejected' && (
+                            <button onClick={() => startTamperingEdit(incident)} className="inline-flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors">
+                              <Edit2 size={14}/> Edit & Re-upload
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex gap-3">
+                          {incident.tampering_image_url ? <img src={incident.tampering_image_url} alt="Tampering evidence" className="h-16 w-16 rounded-xl border border-slate-200 object-cover" /> : null}
+                          {incident.repair_device_image_url ? <img src={incident.repair_device_image_url} alt="Repair device evidence" className="h-16 w-16 rounded-xl border border-slate-200 object-cover" /> : null}
+                        </div>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="px-6 py-16 text-center">
+                      <div className="mx-auto flex max-w-md flex-col items-center">
+                        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
+                          <ShieldAlert className="text-slate-300" />
+                        </div>
+                        <p className="text-sm font-black text-slate-800">No client responses yet.</p>
+                        <p className="mt-1 text-sm font-medium text-slate-500">Create the first tampering incident from the form above and it will appear here with `Pending Approval` until the client responds.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
       {/* --- EVIDENCE VIEWER MODAL --- */}
       {selectedAccident && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4 lg:p-8 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl ring-1 ring-white/20 overflow-hidden">
+        <div id="print-wrapper" className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4 lg:p-8 animate-in fade-in duration-200">
+          <div id="print-area" className="bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl ring-1 ring-white/20 overflow-hidden">
             <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 z-10 shrink-0">
               <div><h2 className="text-xl font-black text-slate-900 flex items-center gap-2"><LayoutDashboard className="text-indigo-600 h-6 w-6"/> Evidence Profile</h2><p className="text-sm text-slate-500 mt-1 font-semibold">Registry: <span className="font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-sm ml-1">{selectedAccident.vehicle_number}</span></p></div>
-              <button onClick={() => setSelectedAccident(null)} className="p-2 bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 rounded-xl transition-all shadow-sm"><X size={20} strokeWidth={2.5}/></button>
+              <div className="flex items-center gap-3">
+                <button onClick={handlePrint} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg shadow-sm transition flex items-center gap-2"><Printer className="h-4 w-4"/> Print Report</button>
+                <button onClick={() => setSelectedAccident(null)} className="p-2 bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 rounded-xl transition-all shadow-sm"><X size={20} strokeWidth={2.5}/></button>
+              </div>
             </div>
             <div className="p-8 overflow-y-auto bg-slate-50/50 grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
               <div className="lg:col-span-2 pb-4 border-b border-slate-200 mb-4 flex justify-between">

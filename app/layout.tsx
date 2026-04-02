@@ -1,10 +1,6 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css' // THIS IS CRUCIAL FOR TAILWIND TO WORK
-
-// Load a clean, modern font
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Accident Monitoring Dashboard',
@@ -18,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} min-h-screen`}>
+      <body className="min-h-screen" suppressHydrationWarning>
         <Script id="theme-init" strategy="beforeInteractive">
           {`try {
             var savedTheme = window.localStorage.getItem('dashboard-theme');
@@ -29,7 +25,7 @@ export default function RootLayout({
           `}
         </Script>
         {/* The 'children' here will be your page.tsx files (Login, Admin, Client) */}
-        {children}
+       {children}
       </body>
     </html>
   )
