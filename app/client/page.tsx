@@ -9,7 +9,7 @@ import {
   LayoutDashboard, PlaySquare, AlertCircle, FileSignature, 
   Phone, User, Building2, Calendar, MapPin, Database, 
   PieChart as PieChartIcon, CheckCircle2, ShieldAlert, Printer, 
-  Activity, Map as MapIcon, List, Link as LinkIcon, CalendarDays,
+  Activity, Map as MapIcon, List, Link as LinkIcon, CalendarDays, CreditCard,
   Clock, Briefcase, Loader2, TrendingDown, AlertTriangle, UserCircle,
   Wrench, ThumbsUp, ThumbsDown
 } from 'lucide-react'
@@ -258,6 +258,43 @@ export default function ClientDashboard() {
   const uniqueClientsCount = Object.keys(companyStats).length;
   const averageAccidents = uniqueClientsCount > 0 ? (totalAccidents / uniqueClientsCount).toFixed(1) : '0';
   const CLIENT_COLORS =['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'];
+
+  // --- TAMPERING OVERVIEW (CLIENT-WISE COUNTS & AMOUNTS) ---
+  const tamperingSummaryMap: Record<string, {
+    name: string
+    approved: number
+    pending: number
+    rejected: number
+    amountApproved: number
+    amountPending: number
+    amountRejected: number
+  }> = {};
+
+  tamperingLogs.forEach(log => {
+    const client = log.client_name || 'Unknown Client';
+    if (!tamperingSummaryMap[client]) {
+      tamperingSummaryMap[client] = { name: client, approved: 0, pending: 0, rejected: 0, amountApproved: 0, amountPending: 0, amountRejected: 0 };
+    }
+    const status = (log.status || 'Pending').toLowerCase();
+    const charge = Number(log.tampering_repair_charge || log.repair_charge || 0);
+    if (status === 'approved') {
+      tamperingSummaryMap[client].approved += 1;
+      tamperingSummaryMap[client].amountApproved += charge;
+    } else if (status === 'rejected') {
+      tamperingSummaryMap[client].rejected += 1;
+      tamperingSummaryMap[client].amountRejected += charge;
+    } else {
+      tamperingSummaryMap[client].pending += 1;
+      tamperingSummaryMap[client].amountPending += charge;
+    }
+  });
+
+  const tamperingSummaryData = Object.values(tamperingSummaryMap).sort((a, b) => (b.approved + b.pending + b.rejected) - (a.approved + a.pending + a.rejected));
+  const tamperingTotals = tamperingSummaryData.reduce((acc, row) => {
+    acc.approved += row.approved; acc.pending += row.pending; acc.rejected += row.rejected;
+    acc.amountApproved += row.amountApproved; acc.amountPending += row.amountPending; acc.amountRejected += row.amountRejected;
+    return acc;
+  }, { approved: 0, pending: 0, rejected: 0, amountApproved: 0, amountPending: 0, amountRejected: 0 });
 
   const exportToExcel = () => {
     const exportData = filteredData.map(item => ({
@@ -626,6 +663,71 @@ export default function ClientDashboard() {
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (<div className="flex items-center justify-center h-full text-slate-400 font-medium text-sm">No data</div>)}
+                  </div>
+                </div>
+              </div>
+
+              {/* NEW: TAMPERING DEVICE OVERVIEW */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[360px] overflow-hidden">
+                  <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-indigo-500" />
+                      <h3 className="font-bold text-slate-800 text-sm">Tampering Overview — Counts</h3>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] font-black tracking-widest">
+                      <span className="px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700">A {tamperingTotals.approved}</span>
+                      <span className="px-2 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700">P {tamperingTotals.pending}</span>
+                      <span className="px-2 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700">R {tamperingTotals.rejected}</span>
+                    </div>
+                  </div>
+                  <div className="flex-1 p-6">
+                    {tamperingSummaryData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={tamperingSummaryData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} dy={10} />
+                          <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} />
+                          <RechartsTooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none', backgroundColor: '#fff', color: '#000', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}/>
+                          <Bar dataKey="approved" stackId="status" fill="#10b981" radius={[4, 4, 0, 0]} barSize={28} />
+                          <Bar dataKey="pending" stackId="status" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="rejected" stackId="status" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-slate-400 font-medium text-sm">No tampering data</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[360px] overflow-hidden">
+                  <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-indigo-500" />
+                      <h3 className="font-bold text-slate-800 text-sm">Tampering Overview — Amounts (₹)</h3>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] font-black tracking-widest">
+                      <span className="px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700">₹{tamperingTotals.amountApproved.toLocaleString()}</span>
+                      <span className="px-2 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700">₹{tamperingTotals.amountPending.toLocaleString()}</span>
+                      <span className="px-2 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700">₹{tamperingTotals.amountRejected.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <div className="flex-1 p-6">
+                    {tamperingSummaryData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={tamperingSummaryData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} dy={10} />
+                          <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} />
+                          <RechartsTooltip formatter={(value) => `₹${Number(value).toLocaleString()}`} cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none', backgroundColor: '#fff', color: '#000', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}/>
+                          <Bar dataKey="amountApproved" stackId="amt" fill="#10b981" radius={[4, 4, 0, 0]} barSize={28} />
+                          <Bar dataKey="amountPending" stackId="amt" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="amountRejected" stackId="amt" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-slate-400 font-medium text-sm">No tampering amount data</div>
+                    )}
                   </div>
                 </div>
               </div>
