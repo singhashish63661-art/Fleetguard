@@ -96,8 +96,8 @@ export default function ClientDashboard() {
     } catch (error) { console.log("Auth bypass:", error) }
   }
 
-  async function fetchData(companyFilter?: string | null) {
-    setIsLoadingData(true)
+  async function fetchData(companyFilter?: string | null, silent = false) {
+    if (!silent) setIsLoadingData(true)
     const query = supabase.from('accidents').select('*').order('created_at', { ascending: false })
     const { data: accidents } = companyFilter ? await query.eq('company_name', companyFilter) : await query
     if (accidents && accidents.length === 0 && companyFilter) {
@@ -107,11 +107,11 @@ export default function ClientDashboard() {
     } else if (accidents) {
       setData(accidents)
     }
-    setIsLoadingData(false)
+    if (!silent) setIsLoadingData(false)
   }
 
-  async function fetchTamperingLogs(companyFilter?: string | null) {
-    setIsLoadingTampering(true)
+  async function fetchTamperingLogs(companyFilter?: string | null, silent = false) {
+    if (!silent) setIsLoadingTampering(true)
     const query = supabase.from('tampering_incidents').select('*').order('created_at', { ascending: false })
     const { data } = companyFilter ? await query.eq('client_name', companyFilter) : await query
     if (data && data.length === 0 && companyFilter) {
@@ -120,7 +120,7 @@ export default function ClientDashboard() {
     } else if (data) {
       setTamperingLogs(data)
     }
-    setIsLoadingTampering(false)
+    if (!silent) setIsLoadingTampering(false)
   }
 
   useEffect(() => {
@@ -131,6 +131,16 @@ export default function ClientDashboard() {
     const company = currentUser?.company_name || null
     fetchData(company)
     fetchTamperingLogs(company)
+  }, [currentUser])
+
+  // Polling fallback to ensure client sees new admin records even if realtime websocket drops
+  useEffect(() => {
+    const company = currentUser?.company_name || null
+    const id = setInterval(() => {
+      fetchData(company, true)
+      fetchTamperingLogs(company, true)
+    }, 15000)
+    return () => clearInterval(id)
   }, [currentUser])
 
   useEffect(() => {
