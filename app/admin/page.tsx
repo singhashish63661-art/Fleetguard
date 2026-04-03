@@ -1,7 +1,6 @@
 // @ts-nocheck
 'use client'
 export const dynamic = 'force-dynamic'
-export const revalidate = 0
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
