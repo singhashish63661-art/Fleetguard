@@ -125,7 +125,7 @@ export default function AdminDashboard() {
 
   const [newUser, setNewUser] = useState({ email: '', password: '', role: 'client', company_name: '' })
   const[newClientDir, setNewClientDir] = useState({ client_id_number: '', company_name: '', contact_email: '' })
-  const SETTINGS_LOCKED = true
+  const SETTINGS_LOCKED = false
   const lockedAdminSettings = {
     theme: 'light' as const,
     primaryColor: 'indigo' as const,

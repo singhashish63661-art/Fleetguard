@@ -57,7 +57,7 @@ export default function ClientDashboard() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifCenter, setShowNotifCenter] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const SETTINGS_LOCKED = true
+  const SETTINGS_LOCKED = false
   const lockedClientSettings = {
     primaryColor: 'indigo' as const,
     theme: 'light' as const,
