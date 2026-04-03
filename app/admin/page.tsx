@@ -153,7 +153,6 @@ export default function AdminDashboard() {
   const isValidPhoneNumber = (value: string) => !appSettings.requireTenDigitPhone || /^\d{10}$/.test(normalizePhoneNumber(value))
   const applyTheme = (theme: 'light' | 'dark') => {
     syncThemeToDom(theme)
-    if (!SETTINGS_LOCKED) setAppSettings(prev => ({ ...prev, theme }))
   }
   const applyPrimaryColor = (preset: 'emerald' | 'blue' | 'indigo' | 'orange') => {
     if (typeof document === 'undefined') return
@@ -167,12 +166,10 @@ export default function AdminDashboard() {
     document.documentElement.style.setProperty('--accent', accent)
     document.documentElement.style.setProperty('--accent-soft', `${accent}1a`)
     document.documentElement.style.setProperty('--client-primary', accent)
-    if (!SETTINGS_LOCKED) setAppSettings(prev => ({ ...prev, primaryColor: preset }))
   }
   const applyOrientation = (dir: 'ltr' | 'rtl') => {
     if (typeof document === 'undefined') return
     document.documentElement.setAttribute('dir', dir)
-    if (!SETTINGS_LOCKED) setAppSettings(prev => ({ ...prev, orientation: dir }))
   }
   const syncThemeToDom = (theme: 'light' | 'dark') => {
     if (typeof window === 'undefined') return
