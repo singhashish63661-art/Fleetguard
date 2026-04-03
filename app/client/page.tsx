@@ -1,6 +1,7 @@
 // @ts-nocheck
 'use client'
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect */
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -17,9 +18,9 @@ import {
 } from 'lucide-react'
 import Script from 'next/script'
 import { useRouter } from 'next/navigation'
-import dynamic from 'next/dynamic'
+import nextDynamic from 'next/dynamic'
 
-const AccidentMap = dynamic(() => import('@/components/Map'), { 
+const AccidentMap = nextDynamic(() => import('@/components/Map'), { 
   ssr: false, 
   loading: () => <div className="h-full w-full flex items-center justify-center bg-slate-50 text-slate-400 font-bold"><Activity className="animate-spin mr-2"/> Loading Geospatial Data...</div> 
 })
