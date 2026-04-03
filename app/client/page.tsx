@@ -1,7 +1,9 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+/* eslint-disable @next/next/no-img-element */
 'use client'
 export const dynamic = 'force-dynamic'
-/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
@@ -31,8 +33,6 @@ export default function ClientDashboard() {
   const [data, setData] = useState<any[]>([])
   const [tamperingLogs, setTamperingLogs] = useState<any[]>([]) // NEW: Tampering Logs
   const [currentUser, setCurrentUser] = useState<any>(null)
-  const [isLoadingData, setIsLoadingData] = useState(true)
-  const [isLoadingTampering, setIsLoadingTampering] = useState(true)
   const incidentCountRef = useRef(0)
   const tamperingCountRef = useRef(0)
   const triggerToast = (message: string, tone: 'info' | 'success' | 'warning' = 'info') => {
@@ -42,6 +42,10 @@ export default function ClientDashboard() {
     setTimeout(() => setToast(null), 4200)
   }
   
+  const [data, setData] = useState<any[]>([])
+  const [tamperingLogs, setTamperingLogs] = useState<any[]>([]) // NEW: Tampering Logs
+  const [currentUser, setCurrentUser] = useState<any>(null)
+
   const[search, setSearch] = useState('')
   const [dateFilter, setDateFilter] = useState('all')
   const [viewMode, setViewMode] = useState<'table' | 'map'>('table')
@@ -58,6 +62,9 @@ export default function ClientDashboard() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifCenter, setShowNotifCenter] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [statusFilters, setStatusFilters] = useState<string[]>([])
+  const [savedViews, setSavedViews] = useState<{ name: string, search: string, dateFilter: string, statusFilters: string[] }[]>([])
+  const [newViewName, setNewViewName] = useState('')
   const SETTINGS_LOCKED = false
   const lockedClientSettings = {
     primaryColor: 'indigo' as const,
@@ -90,7 +97,7 @@ export default function ClientDashboard() {
     document.documentElement.setAttribute('dir', dir)
   }
 
-  async function fetchCurrentUser() {
+  const fetchCurrentUser = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
@@ -98,10 +105,9 @@ export default function ClientDashboard() {
         setCurrentUser({ ...profile, email: session.user.email })
       }
     } catch (error) { console.log("Auth bypass:", error) }
-  }
+  }, [setCurrentUser])
 
-  async function fetchData(companyFilter?: string | null, silent = false) {
-    if (!silent) setIsLoadingData(true)
+  const fetchData = useCallback(async (companyFilter?: string | null) => {
     const query = supabase.from('accidents').select('*').order('created_at', { ascending: false })
     const { data: accidents } = companyFilter ? await query.eq('company_name', companyFilter) : await query
     if (accidents && accidents.length === 0 && companyFilter) {
@@ -111,11 +117,9 @@ export default function ClientDashboard() {
     } else if (accidents) {
       setData(accidents)
     }
-    if (!silent) setIsLoadingData(false)
-  }
+  }, [setData])
 
-  async function fetchTamperingLogs(companyFilter?: string | null, silent = false) {
-    if (!silent) setIsLoadingTampering(true)
+  const fetchTamperingLogs = useCallback(async (companyFilter?: string | null) => {
     const query = supabase.from('tampering_incidents').select('*').order('created_at', { ascending: false })
     const { data } = companyFilter ? await query.eq('client_name', companyFilter) : await query
     if (data && data.length === 0 && companyFilter) {
@@ -124,18 +128,17 @@ export default function ClientDashboard() {
     } else if (data) {
       setTamperingLogs(data)
     }
-    if (!silent) setIsLoadingTampering(false)
-  }
+  }, [setTamperingLogs])
 
   useEffect(() => {
     fetchCurrentUser()
-  },[])
+  },[fetchCurrentUser])
 
   useEffect(() => {
     const company = currentUser?.company_name || null
     fetchData(company)
     fetchTamperingLogs(company)
-  }, [currentUser])
+  }, [currentUser, fetchData, fetchTamperingLogs])
 
   // Polling fallback to ensure client sees new admin records even if realtime websocket drops
   useEffect(() => {
@@ -145,7 +148,7 @@ export default function ClientDashboard() {
       fetchTamperingLogs(company, true)
     }, 15000)
     return () => clearInterval(id)
-  }, [currentUser])
+  }, [currentUser, fetchData, fetchTamperingLogs])
 
   useEffect(() => {
     if (SETTINGS_LOCKED) {
@@ -156,6 +159,10 @@ export default function ClientDashboard() {
       return
     }
     if (typeof window !== 'undefined') {
+      const savedViewsRaw = window.localStorage.getItem('client-saved-views')
+      if (savedViewsRaw) {
+        try { setSavedViews(JSON.parse(savedViewsRaw)) } catch {}
+      }
       const saved = window.localStorage.getItem('client-app-settings')
       if (saved) {
         try {
@@ -171,6 +178,7 @@ export default function ClientDashboard() {
         applyOrientation(clientSettings.orientation)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -180,8 +188,10 @@ export default function ClientDashboard() {
       applyPrimaryColor(clientSettings.primaryColor)
       applyTheme(clientSettings.theme)
       applyOrientation(clientSettings.orientation)
+      window.localStorage.setItem('client-saved-views', JSON.stringify(savedViews))
     }
-  }, [clientSettings])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientSettings, savedViews])
 
   // --- PUSH NOTIFICATIONS FOR NEW DATA (CLIENT PANEL) ---
   const appendNotification = (message: string, tone: 'info' | 'success' | 'warning') => {
@@ -255,7 +265,7 @@ export default function ClientDashboard() {
       supabase.removeChannel(incidentChannel)
       supabase.removeChannel(tamperingChannel)
     }
-  }, [currentUser])
+  }, [currentUser, fetchData, fetchTamperingLogs])
 
   const getTamperingDriverContact = (log: any) => log.driver_contact_number || log.driver_contact || 'N/A'
   const getTamperingTechnicianContact = (log: any) => log.technician_contact_number || log.technician_contact || 'N/A'
@@ -277,6 +287,10 @@ export default function ClientDashboard() {
       if (dateFilter === '7d' && diffDays > 7) return false;
       if (dateFilter === '30d' && diffDays > 30) return false;
       if (dateFilter === 'year' && logDate.getFullYear() !== now.getFullYear()) return false;
+    }
+    if (statusFilters.length > 0) {
+      const status = item.status || 'Pending Investigation'
+      if (!statusFilters.includes(status)) return false
     }
     return true;
   })
@@ -317,13 +331,6 @@ export default function ClientDashboard() {
   const videosProvided = filteredData.filter(d => d.video_provided).length
   const videosNotProvided = totalAccidents - videosProvided
 
-  const pendingCount = filteredData.filter(d => d.status === 'Pending Investigation' || !d.status).length
-  const claimFiledCount = filteredData.filter(d => d.status === 'Claim Filed').length
-  const closedCount = filteredData.filter(d => d.status === 'Case Closed').length
-  
-  const statusChartData =[{ name: 'Pending', count: pendingCount }, { name: 'Claim Filed', count: claimFiledCount }, { name: 'Closed', count: closedCount }]
-  const STATUS_COLORS =['#f59e0b', '#3b82f6', '#10b981']
-
   const evidenceChartData =[{ name: 'Video Provided', value: videosProvided }, { name: 'Missing Video', value: videosNotProvided }]
   const EVIDENCE_COLORS =['#10b981', '#f43f5e'] 
 
@@ -346,7 +353,6 @@ export default function ClientDashboard() {
   const clientChartData = Object.keys(companyStats).map(company => ({ name: company, Accidents: companyStats[company] })).sort((a, b) => b.Accidents - a.Accidents);
   const uniqueClientsCount = Object.keys(companyStats).length;
   const averageAccidents = uniqueClientsCount > 0 ? (totalAccidents / uniqueClientsCount).toFixed(1) : '0';
-  const CLIENT_COLORS =['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'];
 
   // --- TAMPERING OVERVIEW (CLIENT-WISE COUNTS & AMOUNTS) ---
   const tamperingSummaryMap: Record<string, {
@@ -622,7 +628,7 @@ export default function ClientDashboard() {
       `}} />
 
       {clientSettings.layout === 'horizontal' ? (
-        <aside className="w-full min-h-[90px] flex flex-wrap items-center px-6 py-3 gap-3 bg-slate-900 text-slate-100 border-b border-slate-800 no-print">
+        <aside className="w-full min-h- [90px] flex flex-wrap items-center px-6 py-3 gap-3 bg-slate-900 text-slate-100 border-b border-slate-800 no-print">
           <div className="flex items-center gap-3 mr-2">
             <div className="bg-indigo-600 p-2 rounded-lg shadow-lg shadow-indigo-900/50"><ShieldAlert className="h-5 w-5 text-white" /></div>
             <span className="text-sm font-bold">FleetGuard</span>
@@ -703,12 +709,15 @@ export default function ClientDashboard() {
       })()}
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative no-print">
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10 shadow-sm transition-colors">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-black text-slate-800 tracking-tight">Intelligence Dashboard</h2>
-            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase ml-2 flex items-center"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>Live Data</span>
+        <header className="h-24 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10 shadow-md transition-colors">
+          <div className="flex flex-col gap-1">
+            <p className="text-[11px] font-black uppercase tracking-widest text-indigo-500">Client Intelligence</p>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Executive Dashboard</h2>
+              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase flex items-center"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>Live Data</span>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 shadow-inner">
               <CalendarDays size={16} className="text-slate-400 mr-2"/>
               <select className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}>
@@ -719,6 +728,19 @@ export default function ClientDashboard() {
               <Search size={16} className="text-slate-400" />
               <input type="text" placeholder="Search database..." className="bg-transparent outline-none ml-2 text-sm w-full font-semibold text-slate-700 placeholder:text-slate-400" value={search} onChange={e => setSearch(e.target.value)} />
               {search && <button onClick={() => setSearch('')} className="p-0.5 hover:bg-slate-200 rounded-md"><X size={14} className="text-slate-500"/></button>}
+            </div>
+            <div className="hidden md:flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm">
+              {['Pending Investigation','Claim Filed','Case Closed'].map(st => {
+                const active = statusFilters.includes(st)
+                const label = st === 'Pending Investigation' ? 'Pending' : st === 'Claim Filed' ? 'Filed' : 'Closed'
+                const color = st === 'Pending Investigation' ? 'bg-amber-100 text-amber-700 border-amber-200' : st === 'Claim Filed' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                return (
+                  <button key={st} onClick={() => setStatusFilters(prev => prev.includes(st) ? prev.filter(s => s !== st) : [...prev, st])} className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${color} ${active ? 'shadow-sm' : 'opacity-75'}`}>
+                    {label}
+                  </button>
+                )
+              })}
+              {statusFilters.length > 0 && <button onClick={() => setStatusFilters([])} className="text-[10px] font-bold text-slate-500 hover:text-slate-700 ml-1">Reset</button>}
             </div>
             <button onClick={exportToExcel} className="flex items-center bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 px-4 py-2 rounded-lg font-bold transition-all text-sm shadow-sm"><Download size={16} className="mr-2 text-slate-500"/> Export</button>
             <button onClick={() => { setShowNotifCenter(!showNotifCenter); setUnreadCount(0) }} className="relative h-10 w-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center hover:bg-slate-200 transition">
@@ -735,10 +757,36 @@ export default function ClientDashboard() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-8 w-full">
+          {/* Saved Views */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 mb-4 flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <input value={newViewName} onChange={e => setNewViewName(e.target.value)} placeholder="Name this view" className="px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                <button onClick={() => {
+                  if (!newViewName.trim()) return
+                  const view = { name: newViewName.trim(), search, dateFilter, statusFilters }
+                  setSavedViews(prev => {
+                    const next = [view, ...prev.filter(v => v.name !== view.name)].slice(0,6)
+                    return next
+                  })
+                  setNewViewName('')
+                }} className="px-3 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg shadow-sm hover:bg-indigo-700">Save View</button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {savedViews.map(view => (
+                  <div key={view.name} className="flex items-center bg-slate-100 border border-slate-200 rounded-full px-3 py-1.5 text-xs font-bold text-slate-700">
+                    <button onClick={() => { setSearch(view.search); setDateFilter(view.dateFilter); setStatusFilters(view.statusFilters); }} className="mr-2 hover:text-indigo-600">{view.name}</button>
+                    <button onClick={() => setSavedViews(prev => prev.filter(v => v.name !== view.name))} className="text-slate-500 hover:text-rose-500"><X size={12}/></button>
+                  </div>
+                ))}
+                {savedViews.length === 0 && <span className="text-xs text-slate-500 font-semibold">Save filter presets for quick recall.</span>}
+              </div>
+            </div>
+          </div>
           
           {/* TAB 1: EXECUTIVE DASHBOARD */}
           {activeTab === 'overview' && (
-            <div className="space-y-6 animate-in fade-in duration-300 max-w-[1600px] mx-auto">
+            <div className="space-y-6 animate-in fade-in duration-300 max-w- [1600px] mx-auto">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filtered Records</p><h3 className="text-3xl font-black text-slate-900 mt-2">{totalAccidents}</h3></div><div className="h-12 w-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-600"><Database size={24}/></div></div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between ring-1 ring-indigo-500/10"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg Per Client</p><h3 className="text-3xl font-black text-indigo-600 mt-2">{averageAccidents}</h3></div><div className="h-12 w-12 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600"><Activity size={24}/></div></div>
@@ -747,7 +795,7 @@ export default function ClientDashboard() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 col-span-1 flex flex-col h-[350px] overflow-hidden">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 col-span-1 flex flex-col h- [350px] overflow-hidden">
                   <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50"><h3 className="font-bold text-slate-800 text-sm flex items-center"><Film className="w-4 h-4 mr-2 text-indigo-500"/> Evidence Compliance</h3></div>
                   <div className="flex-1 p-4 relative flex flex-col">
                     {totalAccidents > 0 ? (
@@ -756,7 +804,7 @@ export default function ClientDashboard() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 col-span-1 flex flex-col h-[350px] overflow-hidden">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 col-span-1 flex flex-col h- [350px] overflow-hidden">
                   <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center"><h3 className="font-bold text-slate-800 text-sm flex items-center"><Activity className="w-4 h-4 mr-2 text-indigo-500"/> Client Volume Comparison</h3><span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 uppercase tracking-widest">Avg: {averageAccidents}</span></div>
                   <div className="flex-1 p-6">
                     {clientChartData.length > 0 ? (
@@ -859,7 +907,7 @@ export default function ClientDashboard() {
                 </div>
                 
                 {viewMode === 'table' ? (
-                  <div className="overflow-auto w-full max-h-[600px]">
+                  <div className="overflow-auto w-full max-h- [600px]">
                     <table className="w-full text-left whitespace-nowrap">
                       <thead className="bg-white sticky top-0 z-10 shadow-sm ring-1 ring-slate-200/50">
                         <tr>
@@ -899,7 +947,7 @@ export default function ClientDashboard() {
           )}
 
           {activeTab === 'database' && (
-            <div className="space-y-6 animate-in fade-in duration-300 max-w-[1600px] mx-auto">
+            <div className="space-y-6 animate-in fade-in duration-300 max-w- [1600px] mx-auto">
               <div className="mb-2">
                 <h3 className="text-2xl font-black text-slate-800">Master Database</h3>
                 <p className="text-sm text-slate-500 mt-1 font-medium">Browse all incident records in table or map view.</p>
@@ -915,7 +963,7 @@ export default function ClientDashboard() {
                 </div>
 
                 {viewMode === 'table' ? (
-                  <div className="overflow-auto w-full max-h-[600px]">
+                  <div className="overflow-auto w-full max-h- [600px]">
                     <table className="w-full text-left whitespace-nowrap">
                       <thead className="bg-white sticky top-0 z-10 shadow-sm ring-1 ring-slate-200/50">
                         <tr>
@@ -943,7 +991,7 @@ export default function ClientDashboard() {
                     )}
                   </div>
                 ) : (
-                  <div className="h-[600px] w-full bg-slate-100 relative"><AccidentMap data={filteredData} onMarkerClick={(acc) => setSelectedAccident(acc)} /></div>
+                  <div className="h- [600px] w-full bg-slate-100 relative"><AccidentMap data={filteredData} onMarkerClick={(acc) => setSelectedAccident(acc)} /></div>
                 )}
               </div>
             </div>
@@ -951,7 +999,7 @@ export default function ClientDashboard() {
 
           {/* TAB 2: PIPELINE KANBAN */}
           {activeTab === 'pipeline' && (
-            <div className="animate-in fade-in duration-300 max-w-[1600px] mx-auto h-full flex flex-col">
+            <div className="animate-in fade-in duration-300 max-w- [1600px] mx-auto h-full flex flex-col">
               <div className="mb-6"><h3 className="text-2xl font-black text-slate-800">Active Claims Pipeline</h3><p className="text-sm text-slate-500 mt-1 font-medium">Visual workflow of all ongoing and completed claims.</p></div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 items-start">
                 {['Pending Investigation', 'Claim Filed', 'Case Closed'].map((statusColumn) => (
@@ -1049,7 +1097,7 @@ export default function ClientDashboard() {
 
           {/* NEW: TAMPERING MODULE FOR CLIENT */}
           {activeTab === 'tampering' && (
-            <div className="space-y-8 animate-in fade-in duration-300 max-w-[1400px] mx-auto">
+            <div className="space-y-8 animate-in fade-in duration-300 max-w- [1400px] mx-auto">
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
                   <div>
@@ -1059,7 +1107,7 @@ export default function ClientDashboard() {
                   <span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full border border-indigo-100">{filteredTamperingLogs.length} Total Requests</span>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left min-w-[1080px]">
+                  <table className="w-full text-left min-w- [1080px]">
                     <thead className="bg-white border-b border-slate-200">
                       <tr>
                         <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Client / Vehicle</th>
@@ -1196,7 +1244,7 @@ export default function ClientDashboard() {
 
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm page-break-avoid print-box">
                 <h3 className="text-xs font-black text-slate-800 mb-4 flex items-center uppercase tracking-widest"><ImageIcon className="mr-2 h-5 w-5 text-indigo-500"/> Device Tampering Evidence</h3>
-                {selectedTampering.tampering_image_url ? <img src={selectedTampering.tampering_image_url} alt="Tampering evidence" className="w-full aspect-video object-cover rounded-xl border border-slate-200 shadow-inner print:max-h-[300px] print:object-contain" crossOrigin="anonymous" /> : <div className="w-full aspect-video bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 font-bold text-sm">Image Missing</div>}
+                {selectedTampering.tampering_image_url ? <img src={selectedTampering.tampering_image_url} alt="Tampering evidence" className="w-full aspect-video object-cover rounded-xl border border-slate-200 shadow-inner print:max-h- [300px] print:object-contain" crossOrigin="anonymous" /> : <div className="w-full aspect-video bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 font-bold text-sm">Image Missing</div>}
               </div>
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm page-break-avoid print-box">
                 <h3 className="text-xs font-black text-slate-800 mb-4 flex items-center uppercase tracking-widest"><Wrench className="mr-2 h-5 w-5 text-indigo-500"/> Repair Device Evidence</h3>
