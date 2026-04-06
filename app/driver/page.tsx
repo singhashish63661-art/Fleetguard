@@ -36,7 +36,7 @@ export default function DriverMobilePortal() {
           })
           setIsFetchingGPS(false)
         },
-        (_error) => {
+        () => {
           alert("Please enable Location Services on your phone.")
           setIsFetchingGPS(false)
         },

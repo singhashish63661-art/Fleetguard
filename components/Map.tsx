@@ -21,6 +21,17 @@ const clusterIcon = (count: number) =>
     iconSize: [32, 32],
   })
 
+type ClusterBucket = {
+  clusterCount: number
+  members: any[]
+  lat: number
+  lng: number
+  id?: string
+  vehicle_number?: string
+  company_name?: string
+  place?: string
+}
+
 function FitBounds({ points }: { points: [number, number][] }) {
   const map = useMap()
   useEffect(() => {
@@ -38,14 +49,15 @@ export default function Map({ data, onMarkerClick, autoFit = false, cluster = tr
 
   const clustered = useMemo(() => {
     if (!cluster) return data.map(item => ({ ...item, clusterCount: 1, lat: item.lat, lng: item.lng }))
-    const buckets = new Map<string, any>()
+    const buckets = new globalThis.Map<string, ClusterBucket>()
     data.forEach(item => {
       if (!item.lat || !item.lng) return
       const key = `${item.lat.toFixed(2)}|${item.lng.toFixed(2)}`
       if (!buckets.has(key)) {
-        buckets.set(key, { ...item, clusterCount: 0, members: [] as any[] })
+        buckets.set(key, { ...item, clusterCount: 0, members: [], lat: item.lat, lng: item.lng })
       }
       const bucket = buckets.get(key)
+      if (!bucket) return
       bucket.clusterCount += 1
       bucket.members.push(item)
     })

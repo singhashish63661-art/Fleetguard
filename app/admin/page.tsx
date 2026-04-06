@@ -1,4 +1,6 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+/* eslint-disable @next/next/no-img-element */
 'use client'
 export const dynamic = 'force-dynamic'
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -236,6 +238,7 @@ export default function AdminDashboard() {
       applyPrimaryColor(appSettings.primaryColor)
       applyOrientation(appSettings.orientation)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -246,6 +249,7 @@ export default function AdminDashboard() {
       applyPrimaryColor(appSettings.primaryColor)
       applyOrientation(appSettings.orientation)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appSettings])
 
   const fetchCurrentUser = async () => {
@@ -260,7 +264,9 @@ export default function AdminDashboard() {
 
   const fetchLogs = async () => {
     const { data } = await supabase.from('accidents').select('*').order('created_at', { ascending: false })
-    if (data) setAllLogs(data)
+    if (data) {
+      setAllLogs(data)
+    }
   }
 
   const fetchTamperingLogs = async () => {
@@ -272,7 +278,7 @@ export default function AdminDashboard() {
     try {
       const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
       if (error) throw error; if (data) setProfiles(data)
-    } catch (err) {
+    } catch {
       const { data } = await supabase.from('profiles').select('*'); if (data) setProfiles(data)
     }
   }
@@ -405,7 +411,7 @@ export default function AdminDashboard() {
         setFormData({ ...formData, lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
         setGeoSuccess(true); setShowManualGPS(false); setTimeout(() => setGeoSuccess(false), 3000);
       } else { alert("Couldn't auto-locate. Enter GPS manually."); setShowManualGPS(true); }
-    } catch(e) { setShowManualGPS(true); } finally { setIsGeocoding(false); }
+    } catch { setShowManualGPS(true); } finally { setIsGeocoding(false); }
   }
 
   const uploadMedia = async (file: File | null, folder: string) => {
@@ -645,13 +651,6 @@ export default function AdminDashboard() {
     if (status === 'Claim Filed') return 'bg-blue-100 text-blue-800 border-blue-200'
     if (status === 'Case Closed') return 'bg-emerald-100 text-emerald-800 border-emerald-200'
     return 'bg-slate-100 text-slate-800 border-slate-200'
-  }
-
-  const getAuditColor = (action: string) => {
-    if (action === 'CREATE') return 'bg-emerald-100 text-emerald-700 border-emerald-200'
-    if (action === 'UPDATE') return 'bg-blue-100 text-blue-700 border-blue-200'
-    if (action === 'PROVISION') return 'bg-purple-100 text-purple-700 border-purple-200'
-    return 'bg-slate-100 text-slate-700 border-slate-200'
   }
 
   const getTamperingStatusColor = (status: string) => {

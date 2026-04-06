@@ -4,7 +4,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts'
@@ -28,7 +28,6 @@ const AccidentMap = nextDynamic(() => import('@/components/Map'), {
 
 export default function ClientDashboard() {
   const router = useRouter()
-  
   const [activeTab, setActiveTab] = useState<'overview' | 'pipeline' | 'risk' | 'database' | 'tampering'>('overview')
   const [data, setData] = useState<any[]>([])
   const [tamperingLogs, setTamperingLogs] = useState<any[]>([]) // NEW: Tampering Logs
@@ -42,10 +41,6 @@ export default function ClientDashboard() {
     setTimeout(() => setToast(null), 4200)
   }
   
-  const [data, setData] = useState<any[]>([])
-  const [tamperingLogs, setTamperingLogs] = useState<any[]>([]) // NEW: Tampering Logs
-  const [currentUser, setCurrentUser] = useState<any>(null)
-
   const[search, setSearch] = useState('')
   const [dateFilter, setDateFilter] = useState('all')
   const [viewMode, setViewMode] = useState<'table' | 'map'>('table')
@@ -105,7 +100,7 @@ export default function ClientDashboard() {
         setCurrentUser({ ...profile, email: session.user.email })
       }
     } catch (error) { console.log("Auth bypass:", error) }
-  }, [setCurrentUser])
+  }, [])
 
   const fetchData = useCallback(async (companyFilter?: string | null) => {
     const query = supabase.from('accidents').select('*').order('created_at', { ascending: false })
@@ -709,53 +704,76 @@ export default function ClientDashboard() {
       })()}
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative no-print">
-        <header className="h-24 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10 shadow-md transition-colors">
-          <div className="flex flex-col gap-1">
-            <p className="text-[11px] font-black uppercase tracking-widest text-indigo-500">Client Intelligence</p>
+        <header className="min-h-[5.5rem] bg-white border-b border-slate-200 flex flex-wrap items-center justify-between px-8 py-4 shrink-0 z-10 shadow-sm gap-y-4 transition-colors">
+          
+          {/* LEFT SIDE: Titles and Live Badge */}
+          <div className="flex flex-col gap-1 shrink-0 mr-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Client Intelligence</p>
             <div className="flex items-center gap-3">
               <h2 className="text-2xl font-black text-slate-900 tracking-tight">Executive Dashboard</h2>
-              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase flex items-center"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>Live Data</span>
+              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full text-[10px] font-black tracking-widest uppercase flex items-center shrink-0">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>Live Data
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 shadow-inner">
+
+          {/* RIGHT SIDE: Filters and Controls */}
+          <div className="flex flex-wrap items-center justify-end gap-3 flex-1">
+            
+            {/* Date Filter */}
+            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 shadow-inner shrink-0">
               <CalendarDays size={16} className="text-slate-400 mr-2"/>
               <select className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}>
-                <option value="all">All Time</option><option value="7d">Last 7 Days</option><option value="30d">Last 30 Days</option><option value="year">This Year</option>
+                <option value="all">All Time</option>
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+                <option value="year">This Year</option>
               </select>
             </div>
-            <div className="flex items-center w-64 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-500 transition-all shadow-inner">
-              <Search size={16} className="text-slate-400" />
+
+            {/* Search Bar */}
+            <div className="flex items-center w-full sm:w-56 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-500 transition-all shadow-inner shrink-0">
+              <Search size={16} className="text-slate-400 shrink-0" />
               <input type="text" placeholder="Search database..." className="bg-transparent outline-none ml-2 text-sm w-full font-semibold text-slate-700 placeholder:text-slate-400" value={search} onChange={e => setSearch(e.target.value)} />
-              {search && <button onClick={() => setSearch('')} className="p-0.5 hover:bg-slate-200 rounded-md"><X size={14} className="text-slate-500"/></button>}
+              {search && <button onClick={() => setSearch('')} className="p-0.5 hover:bg-slate-200 rounded-md shrink-0"><X size={14} className="text-slate-500"/></button>}
             </div>
-            <div className="hidden md:flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm">
+
+            {/* Status Pipeline Filters */}
+            <div className="hidden xl:flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-sm shrink-0">
               {['Pending Investigation','Claim Filed','Case Closed'].map(st => {
                 const active = statusFilters.includes(st)
                 const label = st === 'Pending Investigation' ? 'Pending' : st === 'Claim Filed' ? 'Filed' : 'Closed'
-                const color = st === 'Pending Investigation' ? 'bg-amber-100 text-amber-700 border-amber-200' : st === 'Claim Filed' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                const color = st === 'Pending Investigation' ? 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200' : st === 'Claim Filed' ? 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200' : 'bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200'
+                
                 return (
-                  <button key={st} onClick={() => setStatusFilters(prev => prev.includes(st) ? prev.filter(s => s !== st) : [...prev, st])} className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${color} ${active ? 'shadow-sm' : 'opacity-75'}`}>
+                  <button key={st} onClick={() => setStatusFilters(prev => prev.includes(st) ? prev.filter(s => s !== st) : [...prev, st])} className={`px-3 py-1 rounded-md text-[11px] font-bold border transition-all ${color} ${active ? 'ring-2 ring-offset-1 ring-slate-300' : 'opacity-60'}`}>
                     {label}
                   </button>
                 )
               })}
-              {statusFilters.length > 0 && <button onClick={() => setStatusFilters([])} className="text-[10px] font-bold text-slate-500 hover:text-slate-700 ml-1">Reset</button>}
+              {statusFilters.length > 0 && <button onClick={() => setStatusFilters([])} className="text-[10px] font-bold text-slate-500 hover:text-slate-900 ml-1 px-1">Clear</button>}
             </div>
-            <button onClick={exportToExcel} className="flex items-center bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 px-4 py-2 rounded-lg font-bold transition-all text-sm shadow-sm"><Download size={16} className="mr-2 text-slate-500"/> Export</button>
-            <button onClick={() => { setShowNotifCenter(!showNotifCenter); setUnreadCount(0) }} className="relative h-10 w-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center hover:bg-slate-200 transition">
-              <Bell size={18} className="text-slate-600" />
-              {unreadCount > 0 && <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">{unreadCount}</span>}
+
+            {/* Action Buttons */}
+            <button onClick={exportToExcel} className="flex items-center bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 px-4 py-2 rounded-lg font-bold transition-all text-sm shadow-sm shrink-0">
+              <Download size={16} className="mr-2 text-slate-500"/> Export
             </button>
+
+            <button onClick={() => { setShowNotifCenter(!showNotifCenter); setUnreadCount(0) }} className="relative h-10 w-10 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition shadow-sm shrink-0">
+              <Bell size={18} className="text-slate-600" />
+              {unreadCount > 0 && <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center ring-2 ring-white">{unreadCount}</span>}
+            </button>
+
+            {/* App Settings */}
             {!SETTINGS_LOCKED && (
-              <button onClick={() => setShowSettings(true)} className="h-10 px-3 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center gap-2 shadow-sm hover:bg-slate-800">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'var(--client-primary, #6366f1)' }}></span>
+              <button onClick={() => setShowSettings(true)} className="h-10 px-4 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center gap-2 shadow-sm hover:bg-slate-800 shrink-0 transition-colors">
+                <span className="h-2.5 w-2.5 rounded-full border border-white/20" style={{ backgroundColor: 'var(--client-primary, #6366f1)' }}></span>
                 App Settings
               </button>
             )}
+            
           </div>
         </header>
-
         <div className="flex-1 overflow-y-auto p-8 w-full">
           {/* Saved Views */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 mb-4 flex flex-col gap-3">
@@ -795,7 +813,7 @@ export default function ClientDashboard() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 col-span-1 flex flex-col h- [350px] overflow-hidden">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 col-span-1 flex flex-col h-[350px] overflow-hidden">
                   <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50"><h3 className="font-bold text-slate-800 text-sm flex items-center"><Film className="w-4 h-4 mr-2 text-indigo-500"/> Evidence Compliance</h3></div>
                   <div className="flex-1 p-4 relative flex flex-col">
                     {totalAccidents > 0 ? (
@@ -804,25 +822,25 @@ export default function ClientDashboard() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 col-span-1 flex flex-col h- [350px] overflow-hidden">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 col-span-1 flex flex-col h-[350px] overflow-hidden">
                   <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center"><h3 className="font-bold text-slate-800 text-sm flex items-center"><Activity className="w-4 h-4 mr-2 text-indigo-500"/> Client Volume Comparison</h3><span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 uppercase tracking-widest">Avg: {averageAccidents}</span></div>
                   <div className="flex-1 p-6">
                     {clientChartData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={clientChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} dy={10} />
+                       <BarChart data={clientChartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                         {/* FIXED X-AXIS: Added axisLine to ground bars, interval={0} to force all labels, and tickFormatter to shorten long names */}
+                          <XAxis dataKey="name" axisLine={{ stroke: '#cbd5e1', strokeWidth: 2 }} tickLine={false} tick={{fill: '#64748b', fontSize: 10, fontWeight: 600}} dy={10} interval={0} tickFormatter={(val) => val.length > 10 ? val.substring(0, 10) + '...' : val} />
                           <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} />
-                          <RechartsTooltip cursor={{fill: '#f1f5f9'}} contentStyle={{borderRadius: '12px', border: 'none', backgroundColor: '#fff', color: '#000', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}/>
-                          <Bar dataKey="Accidents" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={30} />
-                          <ReferenceLine y={Number(averageAccidents)} stroke="#f43f5e" strokeDasharray="3 3" label={{ position: 'top', value: 'Avg', fill: '#f43f5e', fontSize: 10, fontWeight: 'bold' }} />
-                        </BarChart>
+                           <RechartsTooltip cursor={{fill: '#f1f5f9'}} contentStyle={{borderRadius: '12px', border: 'none', backgroundColor: '#fff', color: '#000', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}/>
+                            <Bar dataKey="Accidents" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={30} />
+                            <ReferenceLine y={Number(averageAccidents)} stroke="#f43f5e" strokeDasharray="3 3" label={{ position: 'top', value: 'Avg', fill: '#f43f5e', fontSize: 10, fontWeight: 'bold' }} />
+                             </BarChart>
                       </ResponsiveContainer>
                     ) : (<div className="flex items-center justify-center h-full text-slate-400 font-medium text-sm">No data</div>)}
                   </div>
                 </div>
               </div>
-
               {/* NEW: TAMPERING DEVICE OVERVIEW */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[360px] overflow-hidden">
@@ -840,19 +858,21 @@ export default function ClientDashboard() {
                   <div className="flex-1 p-6">
                     {normalizedTamperingSummaryData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={normalizedTamperingSummaryData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                        <BarChart data={normalizedTamperingSummaryData} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} dy={10} />
+                          {/* FIXED X-AXIS */}
+                          <XAxis dataKey="name" axisLine={{ stroke: '#cbd5e1', strokeWidth: 2 }} tickLine={false} tick={{fill: '#64748b', fontSize: 10, fontWeight: 600}} dy={10} interval={0} tickFormatter={(val) => val.length > 10 ? val.substring(0, 10) + '...' : val} />
                           <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} />
                           <RechartsTooltip
-                            cursor={{fill: '#f8fafc'}}
-                            formatter={(value) => Math.max(0, Math.round(value as number))}
-                            contentStyle={{borderRadius: '12px', border: 'none', backgroundColor: '#fff', color: '#000', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}
-                          />
-                          <Bar dataKey="approved" stackId="status" fill="#10b981" radius={[4, 4, 0, 0]} barSize={28} />
-                          <Bar dataKey="pending" stackId="status" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="rejected" stackId="status" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                        </BarChart>
+                             cursor={{fill: '#f8fafc'}}
+                             formatter={(value) => Math.max(0, Math.round(value as number))}
+                             contentStyle={{borderRadius: '12px', border: 'none', backgroundColor: '#fff', color: '#000', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}
+                            />
+                           {/* FIXED ZERO BUG: Removed the radius property from stacked bars! */}
+                        <Bar dataKey="approved" stackId="status" fill="#10b981" barSize={28} />
+                       <Bar dataKey="pending" stackId="status" fill="#f59e0b" />
+                        <Bar dataKey="rejected" stackId="status" fill="#ef4444" />
+                      </BarChart>
                       </ResponsiveContainer>
                     ) : (
                       <div className="flex items-center justify-center h-full text-slate-400 font-medium text-sm">No tampering data</div>
@@ -875,18 +895,20 @@ export default function ClientDashboard() {
                   <div className="flex-1 p-6">
                     {normalizedTamperingSummaryData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={normalizedTamperingSummaryData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} dy={10} />
-                          <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} />
-                          <RechartsTooltip
-                            formatter={(value) => `₹${Math.max(0, Math.round(value as number)).toLocaleString()}`}
-                            cursor={{fill: '#f8fafc'}}
-                            contentStyle={{borderRadius: '12px', border: 'none', backgroundColor: '#fff', color: '#000', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}
-                          />
-                          <Bar dataKey="amountApproved" stackId="amt" fill="#10b981" radius={[4, 4, 0, 0]} barSize={28} />
-                          <Bar dataKey="amountPending" stackId="amt" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="amountRejected" stackId="amt" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                        <BarChart data={normalizedTamperingSummaryData} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
+                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                         {/* FIXED X-AXIS */}
+                        <XAxis dataKey="name" axisLine={{ stroke: '#cbd5e1', strokeWidth: 2 }} tickLine={false} tick={{fill: '#64748b', fontSize: 10, fontWeight: 600}} dy={10} interval={0} tickFormatter={(val) => val.length > 10 ? val.substring(0, 10) + '...' : val} />
+                        <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} tick={{fill: '#64748b', fontSize: 11, fontWeight: 600}} />
+                        <RechartsTooltip
+                          formatter={(value) => `₹${Math.max(0, Math.round(value as number)).toLocaleString()}`}
+                          cursor={{fill: '#f8fafc'}}
+                          contentStyle={{borderRadius: '12px', border: 'none', backgroundColor: '#fff', color: '#000', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}
+                              />
+                            {/* FIXED ZERO BUG: Removed the radius property from stacked bars! */}
+                        <Bar dataKey="amountApproved" stackId="amt" fill="#10b981" barSize={28} />
+                        <Bar dataKey="amountPending" stackId="amt" fill="#f59e0b" />
+                        <Bar dataKey="amountRejected" stackId="amt" fill="#ef4444" />
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
