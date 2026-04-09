@@ -804,7 +804,7 @@ export default function ClientDashboard() {
           
           {/* TAB 1: EXECUTIVE DASHBOARD */}
           {activeTab === 'overview' && (
-            <div className="space-y-6 animate-in fade-in duration-300 max-w- [1600px] mx-auto">
+            <div className="space-y-6 animate-in fade-in duration-300 max-w-[1600px] mx-auto">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filtered Records</p><h3 className="text-3xl font-black text-slate-900 mt-2">{totalAccidents}</h3></div><div className="h-12 w-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-600"><Database size={24}/></div></div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between ring-1 ring-indigo-500/10"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg Per Client</p><h3 className="text-3xl font-black text-indigo-600 mt-2">{averageAccidents}</h3></div><div className="h-12 w-12 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600"><Activity size={24}/></div></div>
@@ -969,7 +969,7 @@ export default function ClientDashboard() {
           )}
 
           {activeTab === 'database' && (
-            <div className="space-y-6 animate-in fade-in duration-300 max-w- [1600px] mx-auto">
+            <div className="space-y-6 animate-in fade-in duration-300 max-w-[1600px] mx-auto">
               <div className="mb-2">
                 <h3 className="text-2xl font-black text-slate-800">Master Database</h3>
                 <p className="text-sm text-slate-500 mt-1 font-medium">Browse all incident records in table or map view.</p>
@@ -1021,7 +1021,7 @@ export default function ClientDashboard() {
 
           {/* TAB 2: PIPELINE KANBAN */}
           {activeTab === 'pipeline' && (
-            <div className="animate-in fade-in duration-300 max-w- [1600px] mx-auto h-full flex flex-col">
+            <div className="animate-in fade-in duration-300 max-w-[1600px] mx-auto h-full flex flex-col">
               <div className="mb-6"><h3 className="text-2xl font-black text-slate-800">Active Claims Pipeline</h3><p className="text-sm text-slate-500 mt-1 font-medium">Visual workflow of all ongoing and completed claims.</p></div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 items-start">
                 {['Pending Investigation', 'Claim Filed', 'Case Closed'].map((statusColumn) => (
@@ -1119,7 +1119,7 @@ export default function ClientDashboard() {
 
           {/* NEW: TAMPERING MODULE FOR CLIENT */}
           {activeTab === 'tampering' && (
-            <div className="space-y-8 animate-in fade-in duration-300 max-w- [1400px] mx-auto">
+            <div className="space-y-8 animate-in fade-in duration-300 max-w-[1400px] mx-auto">
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
                   <div>
