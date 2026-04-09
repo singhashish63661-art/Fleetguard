@@ -26,6 +26,11 @@ const AccidentMap = nextDynamic(() => import('@/components/Map'), {
   loading: () => <div className="h-full w-full flex items-center justify-center bg-slate-50 text-slate-400 font-bold"><Activity className="animate-spin mr-2"/> Loading Geospatial Data...</div> 
 })
 
+const TAB_CONTAINER_WIDE = 'space-y-6 animate-in fade-in duration-300 max-w-[1600px] mx-auto'
+const TAB_CONTAINER_PIPELINE = 'animate-in fade-in duration-300 max-w-[1600px] mx-auto h-full flex flex-col'
+const TAB_CONTAINER_STANDARD = 'animate-in fade-in duration-300 max-w-[1400px] mx-auto'
+const TAB_CONTAINER_STANDARD_SPACED = 'space-y-8 animate-in fade-in duration-300 max-w-[1400px] mx-auto'
+
 export default function ClientDashboard() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'overview' | 'pipeline' | 'risk' | 'database' | 'tampering'>('overview')
@@ -450,7 +455,7 @@ export default function ClientDashboard() {
   const isHorizontalLayout = clientSettings.layout === 'horizontal'
 
   return (
-    <div id="client-app-shell" className={`${isHorizontalLayout ? 'flex flex-col' : 'flex flex-row'} min-h-screen bg-[#f8fafc] font-sans text-slate-900 overflow-hidden relative`} dir={clientSettings.orientation}>
+    <div id="client-app-shell" className={`${isHorizontalLayout ? 'flex flex-col' : 'flex flex-row'} min-h-screen bg-linear-to-b from-slate-50 to-slate-100/60 font-sans text-slate-900 overflow-hidden relative`} dir={clientSettings.orientation}>
       <style dangerouslySetInnerHTML={{__html: `
         :root {
           --accent: var(--client-primary, #6366f1);
@@ -704,7 +709,7 @@ export default function ClientDashboard() {
       })()}
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative no-print">
-        <header className="min-h-[5.5rem] bg-white border-b border-slate-200 flex flex-wrap items-center justify-between px-8 py-4 shrink-0 z-10 shadow-sm gap-y-4 transition-colors">
+        <header className="min-h-[5.5rem] bg-linear-to-r from-white/95 via-indigo-50/50 to-white/95 backdrop-blur border-b border-slate-300/70 flex flex-wrap items-center justify-between px-4 sm:px-6 lg:px-8 py-4 shrink-0 z-10 shadow-md shadow-slate-300/30 gap-y-4 transition-colors sticky top-0">
           
           {/* LEFT SIDE: Titles and Live Badge */}
           <div className="flex flex-col gap-1 shrink-0 mr-4">
@@ -755,7 +760,7 @@ export default function ClientDashboard() {
             </div>
 
             {/* Action Buttons */}
-            <button onClick={exportToExcel} className="flex items-center bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 px-4 py-2 rounded-lg font-bold transition-all text-sm shadow-sm shrink-0">
+            <button onClick={exportToExcel} className="btn-secondary shrink-0">
               <Download size={16} className="mr-2 text-slate-500"/> Export
             </button>
 
@@ -774,7 +779,7 @@ export default function ClientDashboard() {
             
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto p-8 w-full">
+        <div className="flex-1 overflow-y-auto w-full max-w-[1600px] mx-auto px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
           {/* Saved Views */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 mb-4 flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-3">
@@ -788,7 +793,7 @@ export default function ClientDashboard() {
                     return next
                   })
                   setNewViewName('')
-                }} className="px-3 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg shadow-sm hover:bg-indigo-700">Save View</button>
+                }} className="btn-primary text-xs px-3 py-2">Save View</button>
               </div>
               <div className="flex flex-wrap gap-2">
                 {savedViews.map(view => (
@@ -804,16 +809,16 @@ export default function ClientDashboard() {
           
           {/* TAB 1: EXECUTIVE DASHBOARD */}
           {activeTab === 'overview' && (
-            <div className="space-y-6 animate-in fade-in duration-300 max-w-[1600px] mx-auto">
+            <div className={TAB_CONTAINER_WIDE}>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filtered Records</p><h3 className="text-3xl font-black text-slate-900 mt-2">{totalAccidents}</h3></div><div className="h-12 w-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-600"><Database size={24}/></div></div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between ring-1 ring-indigo-500/10"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg Per Client</p><h3 className="text-3xl font-black text-indigo-600 mt-2">{averageAccidents}</h3></div><div className="h-12 w-12 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600"><Activity size={24}/></div></div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between ring-1 ring-emerald-500/10"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Video Uploaded</p><h3 className="text-3xl font-black text-emerald-600 mt-2">{videosProvided}</h3></div><div className="h-12 w-12 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600"><CheckCircle2 size={24}/></div></div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between ring-1 ring-rose-500/10"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Missing Video</p><h3 className="text-3xl font-black text-rose-600 mt-2">{videosNotProvided}</h3></div><div className="h-12 w-12 bg-rose-50 rounded-full flex items-center justify-center text-rose-600"><AlertCircle size={24}/></div></div>
+                <div className="panel-stat-card flex items-center justify-between"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filtered Records</p><h3 className="text-3xl font-black text-slate-900 mt-2">{totalAccidents}</h3></div><div className="h-12 w-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-600"><Database size={24}/></div></div>
+                <div className="panel-stat-card flex items-center justify-between ring-1 ring-indigo-500/10"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg Per Client</p><h3 className="text-3xl font-black text-indigo-600 mt-2">{averageAccidents}</h3></div><div className="h-12 w-12 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600"><Activity size={24}/></div></div>
+                <div className="panel-stat-card flex items-center justify-between ring-1 ring-emerald-500/10"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Video Uploaded</p><h3 className="text-3xl font-black text-emerald-600 mt-2">{videosProvided}</h3></div><div className="h-12 w-12 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600"><CheckCircle2 size={24}/></div></div>
+                <div className="panel-stat-card flex items-center justify-between ring-1 ring-rose-500/10"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Missing Video</p><h3 className="text-3xl font-black text-rose-600 mt-2">{videosNotProvided}</h3></div><div className="h-12 w-12 bg-rose-50 rounded-full flex items-center justify-center text-rose-600"><AlertCircle size={24}/></div></div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 col-span-1 flex flex-col h-[350px] overflow-hidden">
+                <div className="panel-card col-span-1 flex flex-col h-[350px] overflow-hidden">
                   <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50"><h3 className="font-bold text-slate-800 text-sm flex items-center"><Film className="w-4 h-4 mr-2 text-indigo-500"/> Evidence Compliance</h3></div>
                   <div className="flex-1 p-4 relative flex flex-col">
                     {totalAccidents > 0 ? (
@@ -822,7 +827,7 @@ export default function ClientDashboard() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 col-span-1 flex flex-col h-[350px] overflow-hidden">
+                <div className="panel-card col-span-1 flex flex-col h-[350px] overflow-hidden">
                   <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center"><h3 className="font-bold text-slate-800 text-sm flex items-center"><Activity className="w-4 h-4 mr-2 text-indigo-500"/> Client Volume Comparison</h3><span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 uppercase tracking-widest">Avg: {averageAccidents}</span></div>
                   <div className="flex-1 p-6">
                     {clientChartData.length > 0 ? (
@@ -843,7 +848,7 @@ export default function ClientDashboard() {
               </div>
               {/* NEW: TAMPERING DEVICE OVERVIEW */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[360px] overflow-hidden">
+                <div className="panel-card flex flex-col h-[360px] overflow-hidden">
                   <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <ShieldAlert className="w-4 h-4 text-indigo-500" />
@@ -880,7 +885,7 @@ export default function ClientDashboard() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[360px] overflow-hidden">
+                <div className="panel-card flex flex-col h-[360px] overflow-hidden">
                   <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <CreditCard className="w-4 h-4 text-indigo-500" />
@@ -969,7 +974,7 @@ export default function ClientDashboard() {
           )}
 
           {activeTab === 'database' && (
-            <div className="space-y-6 animate-in fade-in duration-300 max-w-[1600px] mx-auto">
+            <div className={TAB_CONTAINER_WIDE}>
               <div className="mb-2">
                 <h3 className="text-2xl font-black text-slate-800">Master Database</h3>
                 <p className="text-sm text-slate-500 mt-1 font-medium">Browse all incident records in table or map view.</p>
@@ -1021,7 +1026,7 @@ export default function ClientDashboard() {
 
           {/* TAB 2: PIPELINE KANBAN */}
           {activeTab === 'pipeline' && (
-            <div className="animate-in fade-in duration-300 max-w-[1600px] mx-auto h-full flex flex-col">
+            <div className={TAB_CONTAINER_PIPELINE}>
               <div className="mb-6"><h3 className="text-2xl font-black text-slate-800">Active Claims Pipeline</h3><p className="text-sm text-slate-500 mt-1 font-medium">Visual workflow of all ongoing and completed claims.</p></div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 items-start">
                 {['Pending Investigation', 'Claim Filed', 'Case Closed'].map((statusColumn) => (
@@ -1060,10 +1065,10 @@ export default function ClientDashboard() {
 
           {/* TAB 3: DRIVER RISK */}
           {activeTab === 'risk' && (
-            <div className="animate-in fade-in duration-300 max-w-[1400px] mx-auto">
+            <div className={TAB_CONTAINER_STANDARD}>
               <div className="mb-6"><h3 className="text-2xl font-black text-slate-800">Driver Risk Intelligence</h3><p className="text-sm text-slate-500 mt-1 font-medium">Identify high-risk operators based on incident frequency.</p></div>
               
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 col-span-1 flex flex-col h-[350px] overflow-hidden mb-6">
+              <div className="panel-card col-span-1 flex flex-col h-[350px] overflow-hidden mb-6">
                 <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center"><h3 className="font-bold text-slate-800 text-sm flex items-center"><TrendingDown className="w-4 h-4 mr-2 text-rose-500"/> Operator Incident Frequency</h3></div>
                 <div className="flex-1 p-6">
                   {topDriversChart.length > 0 ? (
@@ -1080,7 +1085,7 @@ export default function ClientDashboard() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="panel-section">
                 <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                   <h3 className="font-bold text-slate-800 text-sm flex items-center"><AlertTriangle className="mr-2 h-4 w-4 text-amber-500"/> Complete Driver Risk Directory</h3>
                 </div>
@@ -1119,7 +1124,7 @@ export default function ClientDashboard() {
 
           {/* NEW: TAMPERING MODULE FOR CLIENT */}
           {activeTab === 'tampering' && (
-            <div className="space-y-8 animate-in fade-in duration-300 max-w-[1400px] mx-auto">
+            <div className={TAB_CONTAINER_STANDARD_SPACED}>
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
                   <div>
@@ -1181,7 +1186,7 @@ export default function ClientDashboard() {
             <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 z-10 no-print">
               <div><h2 className="text-xl font-black text-slate-900 flex items-center gap-2"><LayoutDashboard className="text-indigo-600 h-6 w-6"/> Evidence Profile</h2><p className="text-sm text-slate-500 mt-1 font-semibold">Registry: <span className="font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-sm ml-1">{selectedAccident.vehicle_number}</span></p></div>
               <div className="flex items-center gap-3">
-                <button onClick={handlePrint} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg shadow-sm transition flex items-center gap-2"><Printer className="h-4 w-4"/> Save Official PDF</button>
+                <button onClick={handlePrint} className="btn-primary"><Printer className="h-4 w-4"/> Save Official PDF</button>
                 <button onClick={() => setSelectedAccident(null)} className="p-2 bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 rounded-xl transition-all shadow-sm"><X size={20} strokeWidth={2.5}/></button>
               </div>
             </div>
@@ -1231,7 +1236,7 @@ export default function ClientDashboard() {
             <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 z-10 no-print">
               <div><h2 className="text-xl font-black text-slate-900 flex items-center gap-2"><Wrench className="text-indigo-600 h-6 w-6"/> Device Tampering Review</h2><p className="text-sm text-slate-500 mt-1 font-semibold">Registry: <span className="font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-sm ml-1">{selectedTampering.vehicle_number}</span></p></div>
               <div className="flex items-center gap-3">
-                <button onClick={handlePrint} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg shadow-sm transition flex items-center gap-2"><Printer className="h-4 w-4"/> Print Report</button>
+                <button onClick={handlePrint} className="btn-primary"><Printer className="h-4 w-4"/> Print Report</button>
                 <button onClick={() => {setSelectedTampering(null); setShowRejectInput(false);}} className="p-2 bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 rounded-xl transition-all shadow-sm"><X size={20} strokeWidth={2.5}/></button>
               </div>
             </div>

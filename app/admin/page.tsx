@@ -19,6 +19,11 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
+const TAB_CONTAINER_PIPELINE = 'animate-in fade-in duration-300 max-w-[1600px] mx-auto h-full flex flex-col'
+const TAB_CONTAINER_STANDARD = 'animate-in fade-in duration-300 max-w-[1400px] mx-auto'
+const TAB_CONTAINER_STANDARD_SPACED = 'space-y-8 animate-in fade-in duration-300 max-w-[1400px] mx-auto'
+const TAB_CONTAINER_STANDARD_SPACED_TRAILING = 'animate-in fade-in duration-300 max-w-[1400px] mx-auto space-y-8'
+
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -662,7 +667,7 @@ export default function AdminDashboard() {
   const isHorizontalLayout = appSettings.layout === 'horizontal'
 
   return (
-    <div id="admin-app-shell" className={`${isHorizontalLayout ? 'flex flex-col' : 'flex flex-row'} min-h-screen lg:h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden relative`} dir={appSettings.orientation}>
+    <div id="admin-app-shell" className={`${isHorizontalLayout ? 'flex flex-col' : 'flex flex-row'} min-h-screen lg:h-screen bg-linear-to-b from-slate-50 to-slate-100/60 font-sans text-slate-900 overflow-hidden relative`} dir={appSettings.orientation}>
       <style dangerouslySetInnerHTML={{__html: `
         :root {
           --accent: var(--client-primary, #6366f1);
@@ -927,7 +932,7 @@ export default function AdminDashboard() {
       })()}
 
       <main className="flex-1 flex flex-col min-h-screen lg:h-screen overflow-y-auto bg-slate-50/50 no-print">
-      <header className="bg-white px-4 py-4 sm:px-6 lg:px-8 border-b border-slate-200 shrink-0 sticky top-0 z-10 shadow-sm">
+      <header className="bg-linear-to-r from-white/95 via-indigo-50/50 to-white/95 px-4 py-4 sm:px-6 lg:px-8 border-b border-slate-300/70 shrink-0 sticky top-0 z-10 shadow-md shadow-slate-300/30 backdrop-blur">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div><h2 className="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight">
           {activeTab === 'overview' && 'System Overview'}
@@ -970,7 +975,7 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        <div className="lg:hidden border-b border-slate-200 bg-white px-4 py-3">
+        <div className="lg:hidden border-b border-slate-200/80 bg-white/95 backdrop-blur px-4 py-3">
           <div className="flex items-center justify-between mb-3">
             <div className="min-w-0">
               <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-400">Admin Panel</p>
@@ -980,7 +985,7 @@ export default function AdminDashboard() {
               <LogOut size={14} /> Sign Out
             </button>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex gap-2 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50/70 p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <button onClick={() => {cancelEdit(); setActiveTab('overview')}} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase tracking-wide ${activeTab === 'overview' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Overview</button>
             <button onClick={() => {cancelEdit(); setActiveTab('pipeline')}} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase tracking-wide ${activeTab === 'pipeline' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Pipeline</button>
             <button onClick={() => {cancelEdit(); setActiveTab('risk')}} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase tracking-wide ${activeTab === 'risk' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>Risk</button>
@@ -992,28 +997,28 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="p-4 sm:p-6 lg:p-8 w-full max-w-[1600px] mx-auto flex-1">
+        <div className="w-full max-w-[1600px] mx-auto flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
           
           {activeTab === 'overview' && (
             <div className="space-y-8 animate-in fade-in duration-300">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filtered Records</p><h3 className="text-3xl font-black text-slate-900 mt-2">{totalAccidents}</h3></div><div className="h-12 w-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-600"><Database size={24}/></div></div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between ring-1 ring-indigo-500/10"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg Per Client</p><h3 className="text-3xl font-black text-indigo-600 mt-2">{averageAccidents}</h3></div><div className="h-12 w-12 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600"><Activity size={24}/></div></div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between ring-1 ring-emerald-500/10"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Video Uploaded</p><h3 className="text-3xl font-black text-emerald-600 mt-2">{videosProvided}</h3></div><div className="h-12 w-12 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600"><Film size={24}/></div></div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between ring-1 ring-rose-500/10"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Missing Video</p><h3 className="text-3xl font-black text-rose-600 mt-2">{videosNotProvided}</h3></div><div className="h-12 w-12 bg-rose-50 rounded-full flex items-center justify-center text-rose-600"><AlertCircle size={24}/></div></div>
+                <div className="panel-stat-card flex items-center justify-between"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filtered Records</p><h3 className="text-3xl font-black text-slate-900 mt-2">{totalAccidents}</h3></div><div className="h-12 w-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-600"><Database size={24}/></div></div>
+                <div className="panel-stat-card flex items-center justify-between ring-1 ring-indigo-500/10"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg Per Client</p><h3 className="text-3xl font-black text-indigo-600 mt-2">{averageAccidents}</h3></div><div className="h-12 w-12 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600"><Activity size={24}/></div></div>
+                <div className="panel-stat-card flex items-center justify-between ring-1 ring-emerald-500/10"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Video Uploaded</p><h3 className="text-3xl font-black text-emerald-600 mt-2">{videosProvided}</h3></div><div className="h-12 w-12 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600"><Film size={24}/></div></div>
+                <div className="panel-stat-card flex items-center justify-between ring-1 ring-rose-500/10"><div><p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Missing Video</p><h3 className="text-3xl font-black text-rose-600 mt-2">{videosNotProvided}</h3></div><div className="h-12 w-12 bg-rose-50 rounded-full flex items-center justify-center text-rose-600"><AlertCircle size={24}/></div></div>
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 col-span-1 flex flex-col h-[400px] overflow-hidden"><div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50"><h3 className="font-bold text-slate-800 text-sm">Incident Distribution by Client</h3></div><div className="flex-1 p-4">{clientChartData.length > 0 ? (<ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={clientChartData} innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="Accidents" stroke="none">{clientChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}</Pie><RechartsTooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}/></PieChart></ResponsiveContainer>) : (<div className="flex items-center justify-center h-full text-slate-400 font-medium text-sm">No client data available</div>)}</div></div>
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 col-span-1 lg:col-span-2 flex flex-col h-[400px] overflow-hidden"><div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center"><h3 className="font-bold text-slate-800 text-sm">Client Volume Comparison</h3><span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">System Avg: {averageAccidents}</span></div><div className="flex-1 p-6">{clientChartData.length > 0 ? (<ResponsiveContainer width="100%" height="100%"><BarChart data={clientChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12, fontWeight: 600}} dy={10} /><YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12, fontWeight: 600}} /><RechartsTooltip cursor={{fill: '#f1f5f9'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}/><Bar dataKey="Accidents" fill="#6366f1" radius={[6, 6, 0, 0]} barSize={40} /><ReferenceLine y={Number(averageAccidents)} stroke="#f43f5e" strokeDasharray="3 3" label={{ position: 'top', value: 'Avg', fill: '#f43f5e', fontSize: 12, fontWeight: 'bold' }} /></BarChart></ResponsiveContainer>) : (<div className="flex items-center justify-center h-full text-slate-400 font-medium text-sm">No client data available</div>)}</div></div>
+                <div className="panel-card col-span-1 flex flex-col h-[400px] overflow-hidden"><div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50"><h3 className="font-bold text-slate-800 text-sm">Incident Distribution by Client</h3></div><div className="flex-1 p-4">{clientChartData.length > 0 ? (<ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={clientChartData} innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="Accidents" stroke="none">{clientChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}</Pie><RechartsTooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}/></PieChart></ResponsiveContainer>) : (<div className="flex items-center justify-center h-full text-slate-400 font-medium text-sm">No client data available</div>)}</div></div>
+                <div className="panel-card col-span-1 lg:col-span-2 flex flex-col h-[400px] overflow-hidden"><div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center"><h3 className="font-bold text-slate-800 text-sm">Client Volume Comparison</h3><span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">System Avg: {averageAccidents}</span></div><div className="flex-1 p-6">{clientChartData.length > 0 ? (<ResponsiveContainer width="100%" height="100%"><BarChart data={clientChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12, fontWeight: 600}} dy={10} /><YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12, fontWeight: 600}} /><RechartsTooltip cursor={{fill: '#f1f5f9'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}}/><Bar dataKey="Accidents" fill="#6366f1" radius={[6, 6, 0, 0]} barSize={40} /><ReferenceLine y={Number(averageAccidents)} stroke="#f43f5e" strokeDasharray="3 3" label={{ position: 'top', value: 'Avg', fill: '#f43f5e', fontSize: 12, fontWeight: 'bold' }} /></BarChart></ResponsiveContainer>) : (<div className="flex items-center justify-center h-full text-slate-400 font-medium text-sm">No client data available</div>)}</div></div>
               </div>
 
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="px-4 sm:px-6 py-5 border-b border-slate-200 bg-white flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
                   <h3 className="text-lg font-bold text-slate-800">Master Database Records</h3>
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                    <button onClick={() => setShowImportModal(true)} className="bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 px-4 py-2.5 rounded-lg shadow-sm transition-all font-semibold flex items-center gap-2 text-sm"><FileSpreadsheet size={18}/> Bulk Excel Import</button>
-                    <button onClick={() => {cancelEdit(); setActiveTab('log')}} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg shadow-sm transition-all font-semibold flex items-center gap-2 text-sm"><Plus size={18}/> New Record</button>
+                    <button onClick={() => setShowImportModal(true)} className="btn-secondary"><FileSpreadsheet size={18}/> Bulk Excel Import</button>
+                    <button onClick={() => {cancelEdit(); setActiveTab('log')}} className="btn-primary"><Plus size={18}/> New Record</button>
                   </div>
                 </div>
                 <div className="overflow-x-auto">
@@ -1053,7 +1058,7 @@ export default function AdminDashboard() {
 
           {/* CLAIMS PIPELINE TAB */}
           {activeTab === 'pipeline' && (
-            <div className="animate-in fade-in duration-300 max-w-[1600px] mx-auto h-full flex flex-col">
+            <div className={TAB_CONTAINER_PIPELINE}>
               <div className="mb-6"><h3 className="text-xl sm:text-2xl font-black text-slate-800">Claims Pipeline</h3><p className="text-sm text-slate-500 mt-1 font-medium">Drag and drop incident cards to update their status instantly.</p></div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 items-start">
                 {['Pending Investigation', 'Claim Filed', 'Case Closed'].map((statusColumn) => (
@@ -1090,10 +1095,10 @@ export default function AdminDashboard() {
 
           {/* RISK PROFILING TAB */}
           {activeTab === 'risk' && (
-            <div className="animate-in fade-in duration-300 max-w-[1400px] mx-auto">
+            <div className={TAB_CONTAINER_STANDARD}>
               <div className="mb-6"><h3 className="text-xl sm:text-2xl font-black text-slate-800">Driver Intelligence & Risk Profiling</h3><p className="text-sm text-slate-500 mt-1 font-medium">Identify high-risk operators based on incident frequency.</p></div>
               
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 col-span-1 flex flex-col h-[350px] overflow-hidden mb-6">
+              <div className="panel-card col-span-1 flex flex-col h-[350px] overflow-hidden mb-6">
                 <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center"><h3 className="font-bold text-slate-800 text-sm flex items-center"><TrendingDown className="w-4 h-4 mr-2 text-rose-500"/> Operator Incident Frequency</h3></div>
                 <div className="flex-1 p-6">
                   {topDriversChart.length > 0 ? (
@@ -1110,7 +1115,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="panel-section">
                 <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                   <h3 className="font-bold text-slate-800 text-sm flex items-center"><AlertTriangle className="mr-2 h-4 w-4 text-amber-500"/> Complete Driver Risk Directory</h3>
                 </div>
@@ -1149,8 +1154,8 @@ export default function AdminDashboard() {
 
           {/* CLIENT DIRECTORY TAB */}
           {activeTab === 'directory' && (
-            <div className="space-y-8 animate-in fade-in duration-300 max-w-[1400px] mx-auto">
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className={TAB_CONTAINER_STANDARD_SPACED}>
+              <div className="panel-section">
                 <div className="px-6 py-5 border-b border-slate-100 bg-slate-50"><h3 className="font-bold text-slate-800 flex items-center gap-2"><Briefcase size={18} className="text-indigo-600"/> Add Client to Master Directory</h3></div>
                 <form onSubmit={handleAddClientToDirectory} className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
@@ -1158,11 +1163,11 @@ export default function AdminDashboard() {
                     <div><label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Company / Entity Name <span className="text-rose-500">*</span></label><div className="relative"><Building2 className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input required type="text" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl text-sm font-medium uppercase focus:ring-2 focus:ring-indigo-500 outline-none" value={newClientDir.company_name} onChange={e => setNewClientDir({...newClientDir, company_name: toUppercaseText(e.target.value)})} placeholder="ACME CORPORATION" /></div></div>
                     <div><label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">Alert Email (Optional)</label><div className="relative"><Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" /><input type="email" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none" value={newClientDir.contact_email} onChange={e => setNewClientDir({...newClientDir, contact_email: normalizeEmail(e.target.value)})} placeholder="alerts@acme.com" /></div></div>
                   </div>
-                  <div className="mt-6 flex justify-end"><button type="submit" disabled={isAddingClient} className="bg-indigo-600 text-white font-bold py-3 px-8 rounded-xl shadow-md hover:bg-indigo-700 disabled:opacity-50 flex items-center transition-all">{isAddingClient ? <><Loader2 className="animate-spin h-5 w-5 mr-2"/> Saving...</> : <><Plus className="h-5 w-5 mr-2"/> Add to Directory</>}</button></div>
+                  <div className="mt-6 flex justify-end"><button type="submit" disabled={isAddingClient} className="btn-primary py-3 px-8 disabled:opacity-50">{isAddingClient ? <><Loader2 className="animate-spin h-5 w-5 mr-2"/> Saving...</> : <><Plus className="h-5 w-5 mr-2"/> Add to Directory</>}</button></div>
                 </form>
               </div>
 
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="panel-section">
                 <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center"><h3 className="font-bold text-slate-800 flex items-center gap-2"><BookOpen size={18} className="text-indigo-600"/> Master Client Directory</h3><span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full border border-indigo-100">{clientList.length} Saved Clients</span></div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left whitespace-nowrap">
@@ -1193,8 +1198,8 @@ export default function AdminDashboard() {
 
           {/* PORTAL ACCESS (AUTH) TAB */}
           {activeTab === 'clients' && (
-            <div className="space-y-8 animate-in fade-in duration-300 max-w-[1400px] mx-auto">
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className={TAB_CONTAINER_STANDARD_SPACED}>
+              <div className="panel-section">
                 <div className="px-6 py-5 border-b border-slate-100 bg-slate-50"><h3 className="font-bold text-slate-800 flex items-center gap-2"><User size={18} className="text-indigo-600"/> Generate Secure Portal Login</h3></div>
                 <form onSubmit={handleCreateUser} className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
@@ -1208,11 +1213,11 @@ export default function AdminDashboard() {
                       </select>
                     </div>
                   </div>
-                  <div className="mt-6 flex justify-end"><button type="submit" disabled={isCreatingUser} className="bg-indigo-600 text-white font-bold py-3 px-8 rounded-xl shadow-md hover:bg-indigo-700 disabled:opacity-50 flex items-center transition-all">{isCreatingUser ? <><Loader2 className="animate-spin h-5 w-5 mr-2"/> Provisioning...</> : <><ShieldCheck className="h-5 w-5 mr-2"/> Generate Login</>}</button></div>
+                  <div className="mt-6 flex justify-end"><button type="submit" disabled={isCreatingUser} className="btn-primary py-3 px-8 disabled:opacity-50">{isCreatingUser ? <><Loader2 className="animate-spin h-5 w-5 mr-2"/> Provisioning...</> : <><ShieldCheck className="h-5 w-5 mr-2"/> Generate Login</>}</button></div>
                 </form>
               </div>
 
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="panel-section">
                 <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center"><h3 className="font-bold text-slate-800 flex items-center gap-2"><Users size={18} className="text-indigo-600"/> Active Gateway Logins</h3><span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full border border-indigo-100">{profiles.length} Active Profiles</span></div>
                 <table className="w-full text-left whitespace-nowrap">
                   <thead className="bg-white border-b border-slate-200">
@@ -1240,8 +1245,8 @@ export default function AdminDashboard() {
 
           {/* AUDIT LOG TAB */}
           {activeTab === 'audit' && (
-            <div className="animate-in fade-in duration-300 max-w-[1400px] mx-auto">
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className={TAB_CONTAINER_STANDARD}>
+              <div className="panel-section">
                 <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                   <div><h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><History className="text-indigo-600"/> Immutable Audit Trail</h3><p className="text-xs text-slate-500 font-medium mt-1">A secure, chronological record of all system activity.</p></div>
                   <span className="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-full border border-slate-200 flex items-center"><ShieldAlert size={14} className="mr-1.5 text-slate-400"/> System Compliant</span>
@@ -1270,10 +1275,10 @@ export default function AdminDashboard() {
 
           {/* LOG ACCIDENT TAB (FORM) */}
           {activeTab === 'log' && (
-            <div className="animate-in fade-in duration-300 max-w-[1400px] mx-auto">
+            <div className={TAB_CONTAINER_STANDARD}>
               <form onSubmit={handleSubmit} className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                 <div className="xl:col-span-2 space-y-6">
-                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                  <div className="panel-card p-8">
                     <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
                       <h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><FileText className="text-indigo-600"/> Incident Information {isEditing && <span className="bg-amber-100 text-amber-800 text-[10px] uppercase px-2 py-0.5 rounded border border-amber-200 ml-2 shadow-sm">Edit Mode</span>}</h3>
                       {isEditing && <button type="button" onClick={cancelEdit} className="text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">Cancel Edit</button>}
@@ -1366,7 +1371,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="xl:col-span-1 space-y-6">
-                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 h-full flex flex-col">
+                  <div className="panel-card p-8 h-full flex flex-col">
                     <h3 className="text-lg font-black text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-4 mb-6"><UploadCloud className="text-indigo-600"/> Evidence Uploads</h3>
 
                     <div className="space-y-5 flex-1">
@@ -1419,10 +1424,10 @@ export default function AdminDashboard() {
           )}
 
           {activeTab === 'tampering' && (
-            <div className="animate-in fade-in duration-300 max-w-[1400px] mx-auto space-y-8">
+            <div className={TAB_CONTAINER_STANDARD_SPACED_TRAILING}>
               <form onSubmit={handleTamperingSubmit} className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                 <div className="xl:col-span-2">
-                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                  <div className="panel-card p-8">
                     <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
                       <div>
                         <h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><FileText className="text-indigo-600"/> Tampering Device Information</h3>
@@ -1487,7 +1492,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="xl:col-span-1">
-                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 h-full flex flex-col">
+                  <div className="panel-card p-8 h-full flex flex-col">
                     <h3 className="text-lg font-black text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-4 mb-6"><UploadCloud className="text-indigo-600"/> Evidence Uploads</h3>
 
                     <div className="space-y-5 flex-1">
@@ -1538,7 +1543,7 @@ export default function AdminDashboard() {
                 </div>
               </form>
 
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="panel-section">
                 <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/60">
                   <h3 className="text-lg font-black text-slate-800">Latest Client Responses</h3>
                   <p className="text-sm text-slate-500 mt-1 font-medium">When the client approves or rejects from the client panel, the updated status will appear here automatically.</p>
@@ -1593,7 +1598,7 @@ export default function AdminDashboard() {
             <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 z-10 shrink-0">
               <div><h2 className="text-xl font-black text-slate-900 flex items-center gap-2"><LayoutDashboard className="text-indigo-600 h-6 w-6"/> Evidence Profile</h2><p className="text-sm text-slate-500 mt-1 font-semibold">Registry: <span className="font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-sm ml-1">{selectedAccident.vehicle_number}</span></p></div>
               <div className="flex items-center gap-3">
-                <button onClick={handlePrint} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg shadow-sm transition flex items-center gap-2"><Printer className="h-4 w-4"/> Print Report</button>
+                <button onClick={handlePrint} className="btn-primary"><Printer className="h-4 w-4"/> Print Report</button>
                 <button onClick={() => setSelectedAccident(null)} className="p-2 bg-white border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 rounded-xl transition-all shadow-sm"><X size={20} strokeWidth={2.5}/></button>
               </div>
             </div>
