@@ -790,7 +790,7 @@ export default function ClientDashboard() {
             </div>
             <div className="min-w-0">
               <h1 className="text-lg font-black tracking-tight text-white leading-snug whitespace-nowrap">
-                Shoora<span className="text-indigo-400"> Monitoring</span>
+                Fleet<span className="text-indigo-400"> guard</span>
               </h1>
               <p className="text-[10px] text-slate-500 font-semibold tracking-[0.2em] uppercase mt-2">Client Portal</p>
             </div>
