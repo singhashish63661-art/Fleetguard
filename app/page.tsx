@@ -64,7 +64,7 @@ export default function Login() {
             <div className="bg-indigo-600 p-2 rounded-lg shadow-md shadow-indigo-200">
               <ShieldCheck className="h-6 w-6 text-white" />
             </div>
-            <span className="font-extrabold text-2xl tracking-tight">Shoora <span className="text-indigo-600">Monitoring</span></span>
+            <span className="font-extrabold text-2xl tracking-tight">Accident<span className="text-indigo-600">Monitoring</span></span>
           </div>
 
           <div>
@@ -129,7 +129,7 @@ export default function Login() {
           </div>
           
           <p className="text-center text-xs font-medium text-slate-400 mt-10">
-            Shoora Monitoring © {new Date().getFullYear()}
+            Accident Monitoring © {new Date().getFullYear()}
           </p>
         </div>
       </div>
@@ -146,7 +146,7 @@ export default function Login() {
             <ShieldCheck className="h-12 w-12 text-indigo-400" />
           </div>
           <h2 className="text-4xl font-extrabold text-white tracking-tight leading-tight mb-6">
-            Centralized incident intelligence for Shoora.
+            Centralized incident intelligence for Accident Monitoring.
           </h2>
           <p className="text-lg text-slate-300 font-medium leading-relaxed">
             Monitor incidents in real-time. Securely upload and access dashcam footage, vehicle forensics, and driver logs all from one encrypted command center.
@@ -154,7 +154,7 @@ export default function Login() {
           
           <div className="mt-12 grid grid-cols-2 gap-6 w-full text-left">
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 p-5 rounded-2xl">
-              <h4 className="text-indigo-300 font-bold mb-1">Military-Grade</h4>
+              <h4 className="text-indigo-300 font-bold mb-1">Fleet guard</h4>
               <p className="text-sm text-slate-400 font-medium">Row-level security protecting your data</p>
             </div>
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 p-5 rounded-2xl">

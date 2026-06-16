@@ -297,7 +297,7 @@ export default function ClientDashboard() {
         .subscribe((status, err) => {
           if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             const detail = formatRealtimeErr(err) || '(no detail from server)'
-            console.warn('[Shoora Monitoring realtime accidents]', status, detail, realtimeTroubleshoot)
+            console.warn('[Fleet guard Monitoring realtime accidents]', status, detail, realtimeTroubleshoot)
           }
         })
 
@@ -324,7 +324,7 @@ export default function ClientDashboard() {
         .subscribe((status, err) => {
           if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             const detail = formatRealtimeErr(err) || '(no detail from server)'
-            console.warn('[Shoora Monitoring realtime tampering]', status, detail, realtimeTroubleshoot)
+            console.warn('[Fleet guard Monitoring realtime tampering]', status, detail, realtimeTroubleshoot)
           }
         })
     })()
@@ -756,7 +756,7 @@ export default function ClientDashboard() {
         <aside className="w-full min-h-[90px] flex flex-wrap items-center px-6 py-3 gap-3 bg-slate-900 text-slate-100 border-b border-slate-800 no-print">
           <div className="flex items-center gap-3 mr-2">
             <div className="bg-indigo-600 p-2 rounded-lg shadow-lg shadow-indigo-900/50"><ShieldAlert className="h-5 w-5 text-white" /></div>
-            <span className="text-sm font-bold">Shoora Monitoring</span>
+            <span className="text-sm font-bold">Accident Monitoring</span>
           </div>
           <div className="flex-1 overflow-x-auto flex flex-wrap gap-2">
             {[

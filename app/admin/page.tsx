@@ -915,7 +915,7 @@ export default function AdminDashboard() {
         <aside className="w-full min-h-[90px] flex flex-wrap items-center px-6 py-3 gap-3 bg-slate-900 text-slate-100 border-b border-slate-800 no-print">
           <div className="flex items-center gap-3 mr-2">
             <div className="bg-indigo-600 p-2 rounded-lg shadow-lg shadow-indigo-900/50"><ShieldAlert className="h-5 w-5 text-white" /></div>
-            <span className="text-sm font-bold">Shoora Monitoring · Admin</span>
+            <span className="text-sm font-bold">Fleet guard· Admin</span>
           </div>
           <div className="flex-1 overflow-x-auto flex flex-wrap gap-2">
             {[
@@ -950,7 +950,7 @@ export default function AdminDashboard() {
             <ShieldCheck className="h-8 w-8 text-indigo-400 shrink-0 mt-0.5" aria-hidden />
             <div className="min-w-0">
               <h1 className="text-lg font-black tracking-tight text-white leading-snug whitespace-nowrap">
-                Shoora<span className="text-indigo-400"> Monitoring</span>
+                Accident<span className="text-indigo-400"> Monitoring</span>
               </h1>
               <p className="text-[10px] text-slate-500 font-semibold tracking-[0.2em] uppercase mt-2">
                 Control Center
